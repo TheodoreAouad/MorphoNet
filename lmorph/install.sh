@@ -6,4 +6,4 @@ set -e
 export CC=gcc-8
 export CXX=g++-8
 
-python3.7 setup.py install --user
+python3.9 setup.py install --user
