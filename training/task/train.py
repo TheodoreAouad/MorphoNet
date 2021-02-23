@@ -12,10 +12,10 @@ import matplotlib.pyplot as plt
 from sklearn import model_selection
 from tqdm import tqdm
 
-from utils.visualizer import ModuleVisualizer
+from preprocessing.ops import OPS
+from ..utils.visualizer import ModuleVisualizer
 from .data import load_data, load_gt
 from .patch import make_patches
-from preprocessing.ops import OPS
 from preprocessing.sel import STRUCTURING_ELEMENTS
 
 
@@ -43,7 +43,9 @@ PRECISIONS = {"f32": torch.float32, "f64": torch.float64}
 PRECISIONS_NP = {"f32": "float32", "f64": "float64"}
 
 parser = argparse.ArgumentParser(description="Train a model.")
-parser.add_argument("model", nargs=1, help="model to load")
+# parser.add_argument("model", nargs=1, help="model to load")
+# REPLACED BY
+parser.add_argument("model", help="model to load")
 parser.add_argument("loss", choices=LOSSES.keys(), help="loss to use")
 parser.add_argument("op", choices=OPS.keys(), help="morphological operation to perform")
 parser.add_argument(
@@ -93,9 +95,8 @@ parser.add_argument(
 subparsers = parser.add_subparsers(help="Dataset to train on", dest="dataset")
 
 mnist_parser = subparsers.add_parser("mnist", help="Train on MNIST")
-sidd_parser.add_argument("dataset_path", nargs=1, help="dataset to train on")
-
 sidd_parser = subparsers.add_parser("sidd", help="Train on sidd")
+
 sidd_parser.add_argument("dataset_path", nargs=1, help="dataset to train on")
 sidd_parser.add_argument(
     "--patch_size", type=int, default=64, help="width and height of the image patches",
@@ -240,9 +241,8 @@ def run_epoch(desc, model, loss_func, dl, opt=None, visualizer=None):
     return stats
 
 
-def fit(
-    model, epochs, patience, loss_func, opt, scheduler, train_dl, valid_dl, visualizer
-):
+def fit(model, epochs, patience, loss_func, opt, scheduler, train_dl, valid_dl,
+        visualizer):
     total_elapsed = 0.0
     total_seen = 0
     params = map(lambda param_group: param_group["params"], opt.param_groups)
@@ -409,13 +409,16 @@ if __name__ == "__main__":
 
     device = torch.device("cuda")
     # device = torch.device("cpu")
-    dtype = torch.float32 if args.precision == "f32" else torch.float64
+    
+    #dtype = torch.float32 if args.precision == "f32" else torch.float64
+    # REPLACED BY
+    dtype = PRECISIONS[args.precision]
     torch.set_default_dtype(dtype)
 
     kwargs = {"dtype": dtype, "device": device}
 
     model_name, model, opt, scheduler = get_model(
-        args.model[0], {"filter_size": args.filter_size, **kwargs}
+        args.model, {"filter_size": args.filter_size, **kwargs}
     )
 
     loss_func = LOSSES[args.loss]()
