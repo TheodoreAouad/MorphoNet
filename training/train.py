@@ -13,9 +13,9 @@ from sklearn import model_selection
 from tqdm import tqdm
 
 from preprocessing.ops import OPS
-from ..utils.visualizer import ModuleVisualizer
-from .data import load_data, load_gt
-from .patch import make_patches
+from utils.visualizer import ModuleVisualizer
+from task.data import load_data, load_gt
+from task.patch import make_patches
 from preprocessing.sel import STRUCTURING_ELEMENTS
 
 
@@ -95,6 +95,8 @@ parser.add_argument(
 subparsers = parser.add_subparsers(help="Dataset to train on", dest="dataset")
 
 mnist_parser = subparsers.add_parser("mnist", help="Train on MNIST")
+mnist_parser.add_argument("dataset_path", nargs=1, help="dataset to train on")
+
 sidd_parser = subparsers.add_parser("sidd", help="Train on sidd")
 
 sidd_parser.add_argument("dataset_path", nargs=1, help="dataset to train on")
@@ -401,6 +403,7 @@ LOADERS = {"sidd": load_sidd, "mnist": load_mnist}
 
 if __name__ == "__main__":
     args = parser.parse_args()
+    print(vars(args))
 
     def split_arg(value, mapper=lambda a: a):
         if value is None:
@@ -409,7 +412,7 @@ if __name__ == "__main__":
 
     device = torch.device("cuda")
     # device = torch.device("cpu")
-    
+
     #dtype = torch.float32 if args.precision == "f32" else torch.float64
     # REPLACED BY
     dtype = PRECISIONS[args.precision]
