@@ -1,3 +1,7 @@
 torch
 numpy
 tqdm
+matplotlib
+sklearn
+h5py
+scikit-image
