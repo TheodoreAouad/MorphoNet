@@ -2,7 +2,7 @@
 
 #include <torch/extension.h>
 
-#include "cuda/SMorph_cuda.h"
+#include "SMorph_cuda.h"
 
 std::tuple<at::Tensor, at::Tensor> SMorph_forward(
     const at::Tensor &input,
@@ -33,11 +33,11 @@ class SMorphFunction
     : public torch::autograd::Function<SMorphFunction>
 {
 public:
-  static variable_list forward(
-      AutogradContext *ctx,
-      Variable input,
-      Variable filter,
-      Variable alpha)
+  static torch::autograd::variable_list forward(
+      torch::autograd::AutogradContext *ctx,
+      torch::autograd::Variable input,
+      torch::autograd::Variable filter,
+      torch::autograd::Variable alpha)
   {
     auto result = SMorph_forward(
         input,
@@ -49,9 +49,9 @@ public:
     return {output};
   }
 
-  static variable_list backward(
-      AutogradContext *ctx,
-      variable_list grad_output)
+  static torch::autograd::variable_list backward(
+      torch::autograd::AutogradContext *ctx,
+      torch::autograd::variable_list grad_output)
   {
     auto saved = ctx->get_saved_variables();
     auto output = saved[0];

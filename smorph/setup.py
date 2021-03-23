@@ -14,7 +14,7 @@ setup(
             sources=[
                 "smorph/csrc/ValidDim.cpp",
                 "smorph/csrc/SMorph.cpp",
-                "smorph/csrc/cuda/SMorph_cuda.cu",
+                "smorph/csrc/SMorph_cuda.cu",
             ],
             include_dirs=["smorph/csrc"],
         ),
