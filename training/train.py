@@ -431,13 +431,14 @@ if __name__ == "__main__":
         dtype=PRECISIONS_NP[args.precision],
     )
 
-    plt.imsave("sel.png", sel.squeeze(), cmap="plasma")
-
     out_dir = ensure_dir(
         get_out_dir(
             f"{args.out_dir}/{args.dataset}_{model_name}_{args.loss}_{args.op}_{args.sel}"
         )
     )
+
+    plt.imsave(args.out_dir + "/sel.png", sel.squeeze(), cmap="plasma")
+
 
     print(f"Loaded model {model_name}, saving to {out_dir}")
 
@@ -453,8 +454,8 @@ if __name__ == "__main__":
 
     print(f"X: {x_all.shape}\nY: {y_all.shape}")
 
-    plt.imsave("x.png", x_all[0].squeeze(), cmap="plasma")
-    plt.imsave("y.png", y_all[0].squeeze(), cmap="plasma")
+    plt.imsave(args.out_dir + "/x.png", x_all[0].squeeze(), cmap="plasma")
+    plt.imsave(args.out_dir + "/y.png", y_all[0].squeeze(), cmap="plasma")
 
     x_train, x_valid = x_all[: len(x_train)], x_all[len(x_train) :]
     y_train, y_valid = y_all[: len(x_train)], y_all[len(x_train) :]
