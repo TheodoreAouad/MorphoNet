@@ -95,7 +95,7 @@ parser.add_argument(
 subparsers = parser.add_subparsers(help="Dataset to train on", dest="dataset")
 
 mnist_parser = subparsers.add_parser("mnist", help="Train on MNIST")
-mnist_parser.add_argument("dataset_path", nargs=1, help="dataset to train on")
+mnist_parser.add_argument("dataset_path", help="dataset to train on")
 
 sidd_parser = subparsers.add_parser("sidd", help="Train on sidd")
 
@@ -322,6 +322,7 @@ def load_mnist(**kwargs):
         .data.numpy()
         .astype(dtype)
     )
+
     x_all = np.concatenate((images_train, images_test))
 
     # Load as NCHW.
@@ -403,7 +404,6 @@ LOADERS = {"sidd": load_sidd, "mnist": load_mnist}
 
 if __name__ == "__main__":
     args = parser.parse_args()
-    print(vars(args))
 
     def split_arg(value, mapper=lambda a: a):
         if value is None:
