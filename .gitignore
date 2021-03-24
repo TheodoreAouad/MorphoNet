@@ -8,3 +8,5 @@ env
 tags
 mnist
 out
+*png
+command.sh
