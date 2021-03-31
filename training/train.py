@@ -76,7 +76,7 @@ parser.add_argument(
 parser.add_argument(
     "--gpu",
     type=int,
-    default=None,
+    default=0,
     help="which GPU to restrict the training session to",
 )
 parser.add_argument(
@@ -410,11 +410,11 @@ if __name__ == "__main__":
             return None
         return [mapper(v) for v in value.split(",")]
 
-    device = torch.device("cuda")
-    # device = torch.device("cpu")
+    device = torch.device(f"cuda:{args.gpu}")
+    torch.cuda.set_device(device)
 
-    #dtype = torch.float32 if args.precision == "f32" else torch.float64
-    # REPLACED BY
+    print(f"Running on '{torch.cuda.get_device_name()}'")
+
     dtype = PRECISIONS[args.precision]
     torch.set_default_dtype(dtype)
 
@@ -437,7 +437,7 @@ if __name__ == "__main__":
         )
     )
 
-    plt.imsave(args.out_dir + "/sel.png", sel.squeeze(), cmap="plasma")
+    #plt.imsave(args.out_dir + "/sel.png", sel.squeeze(), cmap="plasma")
 
 
     print(f"Loaded model {model_name}, saving to {out_dir}")
@@ -454,8 +454,8 @@ if __name__ == "__main__":
 
     print(f"X: {x_all.shape}\nY: {y_all.shape}")
 
-    plt.imsave(args.out_dir + "/x.png", x_all[0].squeeze(), cmap="plasma")
-    plt.imsave(args.out_dir + "/y.png", y_all[0].squeeze(), cmap="plasma")
+    #plt.imsave(args.out_dir + "/x.png", x_all[0].squeeze(), cmap="plasma")
+    #plt.imsave(args.out_dir + "/y.png", y_all[0].squeeze(), cmap="plasma")
 
     x_train, x_valid = x_all[: len(x_train)], x_all[len(x_train) :]
     y_train, y_valid = y_all[: len(x_train)], y_all[len(x_train) :]
