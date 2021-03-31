@@ -43,8 +43,6 @@ PRECISIONS = {"f32": torch.float32, "f64": torch.float64}
 PRECISIONS_NP = {"f32": "float32", "f64": "float64"}
 
 parser = argparse.ArgumentParser(description="Train a model.")
-# parser.add_argument("model", nargs=1, help="model to load")
-# REPLACED BY
 parser.add_argument("model", help="model to load")
 parser.add_argument("loss", choices=LOSSES.keys(), help="loss to use")
 parser.add_argument("op", choices=OPS.keys(), help="morphological operation to perform")
@@ -410,6 +408,8 @@ if __name__ == "__main__":
             return None
         return [mapper(v) for v in value.split(",")]
 
+    gpus = [ (i, torch.cuda.get_device_name(i)) for i in range(torch.cuda.device_count()) ]
+    print(f"Available GPUs: {gpus}")
     device = torch.device(f"cuda:{args.gpu}")
     torch.cuda.set_device(device)
 
@@ -423,7 +423,7 @@ if __name__ == "__main__":
     model_name, model, opt, scheduler = get_model(
         args.model, {"filter_size": args.filter_size, **kwargs}
     )
-
+    
     loss_func = LOSSES[args.loss]()
     op = OPS[args.op]
     sel = STRUCTURING_ELEMENTS[args.sel](
@@ -439,12 +439,14 @@ if __name__ == "__main__":
 
     #plt.imsave(args.out_dir + "/sel.png", sel.squeeze(), cmap="plasma")
 
-
     print(f"Loaded model {model_name}, saving to {out_dir}")
 
     x_train, x_valid = LOADERS[args.dataset](**vars(args))
     x_all = np.concatenate((x_train, x_valid))
+
+    print("Creating target images...", end="", flush=True)
     y_all = op(x_all, sel)
+    print(" [Done]")
 
     # Normalization step.
     # x_all = (x_all - np.min(x_all)) / (np.max(x_all) - np.min(x_all)) - 0.5
@@ -471,12 +473,9 @@ if __name__ == "__main__":
     train_ds = TensorDataset(x_train, y_train)
     valid_ds = TensorDataset(x_valid, y_valid)
 
-    inputs = x_valid[:10]
-    targets = y_valid[:10]
-
     visualizer = ModuleVisualizer(
-        inputs,
-        targets,
+        inputs = x_valid[:10],
+        targets = y_valid[:10],
         sel,
         model,
         ensure_dir(f"{out_dir}/vis"),

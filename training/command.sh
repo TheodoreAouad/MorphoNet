@@ -12,7 +12,7 @@
 
 python train.py --filter_size 7\
 		--out_dir ../out\
-		--epochs 10\
+		--epochs 2\
 		--gpu 1\
 		--patience 10\
 		models.smorphnet_double\
