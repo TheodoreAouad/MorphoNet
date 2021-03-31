@@ -474,13 +474,13 @@ if __name__ == "__main__":
     valid_ds = TensorDataset(x_valid, y_valid)
 
     visualizer = ModuleVisualizer(
-        inputs = x_valid[:10],
-        targets = y_valid[:10],
+        x_valid[:10],
+        y_valid[:10],
         sel,
         model,
         ensure_dir(f"{out_dir}/vis"),
         filter_children=args.layers,
-        freq=args.vis_freq,
+        freq=args.vis_freq
     )
 
     fit(
