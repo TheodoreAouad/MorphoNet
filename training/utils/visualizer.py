@@ -15,12 +15,15 @@ def ensure_dir(path, parent=False):
 
 class ModuleVisualizer:
     def __init__(
-        self, inputs, targets, sel, module, out_dir, filter_children=None, freq=16
+        self, inputs, targets, sel, module, out_dir, filter_children=None, freq=16,
+        batch_size=0, max_epochs=0, sel_name="", patience=0, module_name="",
+        loss="", dataset=""
     ):
         self.inputs = inputs
         self.targets = targets
         self.sel = sel
         self.module = module
+        self.module_name = module_name
         if filter_children is not None:
             self.children = list(
                 filter(
@@ -31,6 +34,12 @@ class ModuleVisualizer:
             self.children = list(self.module.named_children())
         self.out_dir = out_dir
         self.freq = freq
+        self.batch_size = batch_size
+        self.max_epochs = max_epochs
+        self.loss= loss
+        self.dataset = dataset
+        self.sel_name = sel_name
+        self.patience = patience 
         self.current_batch = 0
         self.saved_batch = 0
         self.fn = None
@@ -42,6 +51,15 @@ class ModuleVisualizer:
             f.create_dataset("inputs", data=self.inputs.cpu().numpy())
             f.create_dataset("targets", data=self.targets.cpu().numpy())
             f.create_dataset("sel", data=self.sel)
+            f.create_dataset("sel_name", data=self.sel_name)
+            f.create_dataset("sel_size", data=self.sel.shape[0])
+            f.create_dataset("batch_size", data=self.batch_size)
+            f.create_dataset("max_epochs", data=self.max_epochs)
+            f.create_dataset("vis_freq", data=self.freq)
+            f.create_dataset("model", data=self.module_name)
+            f.create_dataset("patience", data=self.patience)
+            f.create_dataset("loss", data=self.loss)
+            f.create_dataset("dataset", data=self.dataset)
 
         self._save({})
         self.current_batch += 1
@@ -101,4 +119,12 @@ class ModuleVisualizer:
         if self.current_batch % self.freq == 0:
             self._save(logs)
 
-        self.current_batch += 1
+        self.current_batch = 1
+
+    def finish(self, logs):
+        with h5py.File(f"{self.out_dir}/meta.h5", "a") as f:
+            for key, value in logs.items():
+                f.create_dataset(key, data=value)
+
+
+

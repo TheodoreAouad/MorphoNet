@@ -283,9 +283,9 @@ def fit(model, epochs, patience, loss_func, opt, scheduler, train_dl, valid_dl,
         print(log)
 
         if epoch - best_valid_loss_seen > patience:
-            print(
-                f"No improvement to validation loss in {patience} epochs, terminating."
-            )
+            message = f"No improvement to validation loss in {patience} epochs, terminating."
+            print(message)
+            visualizer.finish({"end_reason": message, "end_epoch": epoch})
             return
 
         if scheduler is not None:
@@ -304,6 +304,7 @@ def fit(model, epochs, patience, loss_func, opt, scheduler, train_dl, valid_dl,
                 filter(lambda p: p.requires_grad, original_params)
             )
 
+    visualizer.finish({"end_reason": "Reached max epoch", "end_epoch": epochs})
 
 def load_mnist(**kwargs):
     import torchvision
@@ -462,8 +463,6 @@ if __name__ == "__main__":
     x_train, x_valid = x_all[: len(x_train)], x_all[len(x_train) :]
     y_train, y_valid = y_all[: len(x_train)], y_all[len(x_train) :]
 
-    print(f"Using device {device}")
-
     x_train, y_train, x_valid, y_valid = (
         torch.tensor(x_train, **kwargs),
         torch.tensor(y_train, **kwargs),
@@ -480,7 +479,14 @@ if __name__ == "__main__":
         model,
         ensure_dir(f"{out_dir}/vis"),
         filter_children=args.layers,
-        freq=args.vis_freq
+        freq=args.vis_freq,
+        batch_size=args.batch_size,
+        max_epochs=args.epochs,
+        patience=args.patience,
+        sel_name=args.sel,
+        module_name=args.model,
+        loss=args.loss,
+        dataset=args.dataset
     )
 
     fit(
