@@ -119,7 +119,7 @@ class ModuleVisualizer:
         if self.current_batch % self.freq == 0:
             self._save(logs)
 
-        self.current_batch = 1
+        self.current_batch += 1
 
     def finish(self, logs):
         with h5py.File(f"{self.out_dir}/meta.h5", "a") as f:
