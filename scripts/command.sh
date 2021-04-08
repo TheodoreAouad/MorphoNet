@@ -37,6 +37,7 @@ python train.py --filter_size 7\
 		--epochs 1000\
 		--gpu 1\
 		--patience 10\
+		--vis_freq 125\
 		models.smorphnet_double\
 		mse\
 		closing\
