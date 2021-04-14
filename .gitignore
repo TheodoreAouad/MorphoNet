@@ -9,3 +9,5 @@ tags
 mnist
 out
 *png
+*log
+compressed
