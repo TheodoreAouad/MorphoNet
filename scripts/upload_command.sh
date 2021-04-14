@@ -8,4 +8,10 @@ PASS=NULL
 
 #curl -vu $USER:$PASS -T out/dilation.tar.gz https://cloud.lrde.epita.fr/remote.php/dav/files/$USER/Documents/Morphonet/dilation.tar.gz
 
-curl -vu $USER:$PASS -T out/selems.tar.gz https://cloud.lrde.epita.fr/remote.php/dav/files/$USER/Documents/Morphonet/selems.tar.gz
+#curl -vu $USER:$PASS -T out/selems.tar.gz https://cloud.lrde.epita.fr/remote.php/dav/files/$USER/Documents/Morphonet/selems.tar.gz
+
+#list=$(ls *tar.gz)
+#for i in ${list[@]}; do
+#    curl -vu $USER:$PASS -T $i \
+#   https://cloud.lrde.epita.fr/remote.php/dav/files/$USER/Documents/Morphonet/$i
+#done
