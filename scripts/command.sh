@@ -33,13 +33,13 @@
 #		mnist ../mnist
 
 python train.py --filter_size 7\
-		--out_dir ../out\
+		--out_dir ../test\
 		--epochs 1000\
 		--gpu 1\
 		--patience 10\
 		--vis_freq 125\
-		models.smorphnet_double\
+		models.smorphnet\
 		mse\
-		closing\
+		dilation\
 		complex\
 		mnist ../mnist

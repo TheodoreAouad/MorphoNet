@@ -9,7 +9,7 @@ for i in {1..5}; do
         --vis_freq 125\
         models.smorphnet_double\
         mse\
-        closing\
+        opening\
         cross3\
         mnist mnist
 done'\
@@ -24,7 +24,7 @@ for i in {1..5}; do
         --vis_freq 125\
         models.smorphnet_double\
         mse\
-        closing\
+        opening\
         cross7\
         mnist mnist
 done'\
@@ -39,7 +39,7 @@ for i in {1..5}; do
         --vis_freq 125\
         models.smorphnet_double\
         mse\
-        closing\
+        opening\
         diskaa2\
         mnist mnist
 done'\
@@ -54,7 +54,7 @@ for i in {1..5}; do
         --vis_freq 125\
         models.smorphnet_double\
         mse\
-        closing\
+        opening\
         diskaa3\
         mnist mnist
 done'\
@@ -69,7 +69,7 @@ for i in {1..5}; do
         --vis_freq 125\
         models.smorphnet_double\
         mse\
-        closing\
+        opening\
         diamondaa3\
         mnist mnist
 done'\
@@ -84,7 +84,7 @@ for i in {1..5}; do
         --vis_freq 125\
         models.smorphnet_double\
         mse\
-        closing\
+        opening\
         complex\
         mnist mnist
 done'\
