@@ -7,7 +7,7 @@ dist
 env
 tags
 mnist
-out
+out*
 *png
 *log
 compressed
