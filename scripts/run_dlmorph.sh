@@ -10,7 +10,7 @@ for i in {1..5}; do
         models.lmorphnet_double\
         mse\
         opening\
-        cross3\
+        --sel cross3\
         mnist mnist
 done'\
 & tmux new -d \
@@ -25,7 +25,7 @@ for i in {1..5}; do
         models.lmorphnet_double\
         mse\
         opening\
-        cross7\
+        --sel cross7\
         mnist mnist
 done'\
 & tmux new -d \
@@ -40,7 +40,7 @@ for i in {1..5}; do
         models.lmorphnet_double\
         mse\
         opening\
-        diskaa2\
+        --sel diskaa2\
         mnist mnist
 done'\
 & tmux new -d \
@@ -55,7 +55,7 @@ for i in {1..5}; do
         models.lmorphnet_double\
         mse\
         opening\
-        diskaa3\
+        --sel diskaa3\
         mnist mnist
 done'\
 & tmux new -d \
@@ -70,7 +70,7 @@ for i in {1..5}; do
         models.lmorphnet_double\
         mse\
         opening\
-        diamondaa3\
+        --sel diamondaa3\
         mnist mnist
 done'\
 & tmux new -d \
@@ -85,6 +85,6 @@ for i in {1..5}; do
         models.lmorphnet_double\
         mse\
         opening\
-        complex\
+        --sel complex\
         mnist mnist
 done'\
