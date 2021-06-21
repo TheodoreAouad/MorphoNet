@@ -17,7 +17,7 @@ class ModuleVisualizer:
     def __init__(
         self, inputs, targets, sel, module, out_dir, filter_children=None, freq=16,
         batch_size=0, max_epochs=0, sel_name="", patience=0, module_name="",
-        loss="", dataset=""
+        loss="", dataset="", percentage=None
     ):
         self.inputs = inputs
         self.targets = targets
@@ -44,15 +44,19 @@ class ModuleVisualizer:
         self.saved_batch = 0
         self.fn = None
         self.current_epoch = 0
+        self.percentage = percentage
 
         ensure_dir(f"{self.out_dir}/batches")
 
         with h5py.File(f"{self.out_dir}/meta.h5", "w") as f:
             f.create_dataset("inputs", data=self.inputs.cpu().numpy())
             f.create_dataset("targets", data=self.targets.cpu().numpy())
-            f.create_dataset("sel", data=self.sel)
-            f.create_dataset("sel_name", data=self.sel_name)
-            f.create_dataset("sel_size", data=self.sel.shape[0])
+            if self.percentage != None:
+                f.create_dataset("percentage", data=self.percentage)
+            else:
+                f.create_dataset("sel", data=self.sel)
+                f.create_dataset("sel_name", data=self.sel_name)
+                f.create_dataset("sel_size", data=self.sel.shape[0])
             f.create_dataset("batch_size", data=self.batch_size)
             f.create_dataset("max_epochs", data=self.max_epochs)
             f.create_dataset("vis_freq", data=self.freq)

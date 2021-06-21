@@ -5,6 +5,9 @@ from .morpho import (
     draw_diamond_aa,
     draw_cross,
     draw_x,
+    draw_complex,
+    draw_bsquare,
+    draw_bdiamond
 )
 from numpy.random import default_rng
 import numpy as np
@@ -19,8 +22,7 @@ STRUCTURING_ELEMENTS = {
     "diamondaa3": lambda filter_shape, dtype: draw_diamond_aa(
         3, filter_shape, dtype=dtype
     ),
-    "complex": lambda filter_shape, dtype: draw_disk_aa(3, filter_shape, dtype=dtype)
-    - draw_diamond_aa(2, filter_shape, dtype=dtype),
+    "complex": lambda filter_shape, dtype: draw_complex(filter_shape, dtype=dtype),
     "cross3": lambda filter_shape, dtype: draw_cross(3, filter_shape, dtype=dtype),
     "cross5": lambda filter_shape, dtype: draw_cross(5, filter_shape, dtype=dtype),
     "cross7": lambda filter_shape, dtype: draw_cross(7, filter_shape, dtype=dtype),
@@ -29,5 +31,8 @@ STRUCTURING_ELEMENTS = {
     "rand": lambda filter_shape, dtype: rng.normal(
         size=filter_shape, loc=1.5, scale=0.05
     ).astype(dtype),
+    "bcomplex": lambda filter_shape, dtype: np.where(draw_complex(filter_shape,
+            dtype=dtype) < 0.5, 0, 1),
+    "bsquare": lambda filter_shape, dtype: draw_bsquare(3, filter_shape, dtype=dtype),
+    "bdiamond": lambda filter_shape, dtype: draw_bdiamond(3, filter_shape, dtype=dtype)
 }
-

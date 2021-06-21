@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 from sklearn import model_selection
 from tqdm import tqdm
 
-from preprocessing.ops import OPS
+from preprocessing.ops import OPS, OPS_NOISE, OPS_MORPH
 from utils.visualizer import ModuleVisualizer
 from task.data import load_data, load_gt
 from task.patch import make_patches
@@ -45,10 +45,16 @@ PRECISIONS_NP = {"f32": "float32", "f64": "float64"}
 parser = argparse.ArgumentParser(description="Train a model.")
 parser.add_argument("model", help="model to load")
 parser.add_argument("loss", choices=LOSSES.keys(), help="loss to use")
-parser.add_argument("op", choices=OPS.keys(), help="morphological operation to perform")
+
+parser.add_argument("op", choices=OPS.keys(), help="operation to perform")
 parser.add_argument(
-    "sel", choices=STRUCTURING_ELEMENTS.keys(), help="structuring element to use"
+    "--sel", choices=STRUCTURING_ELEMENTS.keys(), help="structuring element to use"
 )
+
+parser.add_argument(
+    "--percentage", type=int, default=5, help="percentage of noise"
+)
+
 parser.add_argument(
     "--epochs", type=int, default=100, help="number of epochs to train for"
 )
@@ -94,6 +100,9 @@ subparsers = parser.add_subparsers(help="Dataset to train on", dest="dataset")
 
 mnist_parser = subparsers.add_parser("mnist", help="Train on MNIST")
 mnist_parser.add_argument("dataset_path", help="dataset to train on")
+
+fashion_mnist_parser = subparsers.add_parser("fashion_mnist", help="Train on FashionMNIST")
+fashion_mnist_parser.add_argument("dataset_path", help="dataset to train on")
 
 sidd_parser = subparsers.add_parser("sidd", help="Train on sidd")
 
@@ -331,19 +340,58 @@ def load_mnist(**kwargs):
     filter_padding = kwargs["filter_size"] // 2
     if kwargs["op"] == "closing" or kwargs["op"] == "opening":
         filter_padding *= 2
-    x_all = np.pad(
-        x_all,
-        (
-            (0, 0),
-            (0, 0),
-            (filter_padding, filter_padding),
-            (filter_padding, filter_padding),
-        ),
-        mode="minimum",
-    )
+    if kwargs["sel"] is not None:
+        x_all = np.pad(
+            x_all,
+            (
+                (0, 0),
+                (0, 0),
+                (filter_padding, filter_padding),
+                (filter_padding, filter_padding),
+            ),
+            mode="minimum",
+        )
 
     return x_all[: len(images_train)], x_all[len(images_train) :]
 
+def load_fmnist(**kwargs):
+    import torchvision
+
+    dtype = PRECISIONS_NP[kwargs["precision"]]
+
+    images_train = (
+        torchvision.datasets.FashionMNIST(kwargs["dataset_path"])
+        .data.numpy()
+        .astype(dtype)
+    )
+    images_test = (
+        torchvision.datasets.FashionMNIST(kwargs["dataset_path"], train=False)
+        .data.numpy()
+        .astype(dtype)
+    )
+
+    x_all = np.concatenate((images_train, images_test))
+
+    # Load as NCHW.
+    x_all = x_all[:, np.newaxis, :, :].astype(dtype)
+    x_all /= 255.0
+
+    filter_padding = kwargs["filter_size"] // 2
+    if kwargs["op"] == "closing" or kwargs["op"] == "opening":
+        filter_padding *= 2
+    if kwargs["sel"] is not None:
+        x_all = np.pad(
+            x_all,
+            (
+                (0, 0),
+                (0, 0),
+                (filter_padding, filter_padding),
+                (filter_padding, filter_padding),
+            ),
+            mode="minimum",
+        )
+
+    return x_all[: len(images_train)], x_all[len(images_train) :]
 
 def load_sidd(
     *,
@@ -397,8 +445,29 @@ def load_sidd(
 
     return x_train, x_valid
 
+def pad_inputs(x, model_name, filter_padding):
+    if "double" in model_name:
+        filter_padding *= 2
+    elif "five" in model_name:
+        filter_padding *= 5
+    elif "four" in model_name:
+        filter_padding *= 4
 
-LOADERS = {"sidd": load_sidd, "mnist": load_mnist}
+    padded = np.pad(
+        x,
+        (
+            (0, 0),
+            (0, 0),
+            (filter_padding, filter_padding),
+            (filter_padding, filter_padding),
+        ),
+        mode="minimum",
+    )
+
+    return padded
+
+
+LOADERS = {"sidd": load_sidd, "mnist": load_mnist, "fashion_mnist": load_fmnist}
 
 
 if __name__ == "__main__":
@@ -424,35 +493,50 @@ if __name__ == "__main__":
     model_name, model, opt, scheduler = get_model(
         args.model, {"filter_size": args.filter_size, **kwargs}
     )
-    
-    loss_func = LOSSES[args.loss]()
-    op = OPS[args.op]
-    sel = STRUCTURING_ELEMENTS[args.sel](
-        filter_shape=(args.filter_size, args.filter_size),
-        dtype=PRECISIONS_NP[args.precision],
-    )
 
-    out_dir = ensure_dir(
-        get_out_dir(
-            f"{args.out_dir}/{args.dataset}_{model_name}_{args.loss}_{args.op}_{args.sel}"
-        )
-    )
-
-    #plt.imsave(args.out_dir + "/sel.png", sel.squeeze(), cmap="plasma")
-
-    print(f"Loaded model {model_name}, saving to {out_dir}")
 
     x_train, x_valid = LOADERS[args.dataset](**vars(args))
     x_all = np.concatenate((x_train, x_valid))
 
-    print("Creating target images...", end="", flush=True)
-    y_all = op(x_all, sel)
+    loss_func = LOSSES[args.loss]()
+    op = OPS[args.op]
+    if args.sel != None:
+        sel = STRUCTURING_ELEMENTS[args.sel](
+            filter_shape=(args.filter_size, args.filter_size),
+            dtype=PRECISIONS_NP[args.precision],
+        )
+
+        out_dir = ensure_dir(
+            get_out_dir(
+                f"{args.out_dir}/{args.dataset}_{model_name}_{args.loss}_{args.op}_{args.sel}"
+            )
+        )
+
+        print(f"Loaded model {model_name}, saving to {out_dir}")
+        #plt.imsave(args.out_dir + "/sel.png", sel.squeeze(), cmap="plasma")
+        print("Creating target images...", end="", flush=True)
+        y_all = op(x_all, sel)
+    else:
+        sel = None
+        out_dir = ensure_dir(
+            get_out_dir(
+                f"{args.out_dir}/{args.dataset}_{model_name}_{args.loss}_{args.op}_{args.percentage}"
+            )
+        )
+
+        print(f"Loaded model {model_name}, saving to {out_dir}")
+        print("Creating target images...", end="", flush=True)
+        y_all = op(x_all, args.percentage,
+                (args.filter_size, args.filter_size))
+
+        x_all, y_all = pad_inputs(y_all, model_name, args.filter_size // 2), x_all
+
     print(" [Done]")
 
     # Normalization step.
     # x_all = (x_all - np.min(x_all)) / (np.max(x_all) - np.min(x_all)) - 0.5
     # y_all = (y_all - np.min(y_all)) / (np.max(y_all) - np.min(y_all)) - 0.5
-    x_all = (x_all - np.mean(x_all)) / np.std(x_all)
+#x_all = (x_all - np.mean(x_all)) / np.std(x_all)
     # y_all = (y_all - np.mean(y_all)) / np.std(y_all)
 
     print(f"X: {x_all.shape}\nY: {y_all.shape}")
@@ -486,7 +570,8 @@ if __name__ == "__main__":
         sel_name=args.sel,
         module_name=args.model,
         loss=args.loss,
-        dataset=args.dataset
+        dataset=args.dataset,
+        percentage=args.percentage
     )
 
     fit(

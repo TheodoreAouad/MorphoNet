@@ -74,6 +74,23 @@ def draw_x(size, shape=None, dtype="float32"):
         return center_in(res, shape, dtype=dtype)
     return res
 
+def draw_complex(shape=None, dtype="float32"):
+    return draw_disk_aa(3, shape, dtype=dtype) \
+           - draw_diamond_aa(2, shape, dtype=dtype)
+
+def draw_bsquare(size, shape=None, dtype="float32"):
+    res = np.ones((size, size), dtype=dtype)
+    if shape is not None:
+        return center_in(res, shape, dtype=dtype)
+    return res
+
+def draw_bdiamond(size, shape=None, dtype="float32"):
+    l = np.arange(0, size * 2 + 1)
+    x, y = np.meshgrid(l, l)
+    res = np.array(np.abs(x - size) + np.abs(y - size) <= size, dtype=dtype)
+    if shape is not None:
+        return center_in(res, shape, dtype=dtype)
+    return res
 
 def dilation(img, fil):
     from scipy.ndimage import morphology as ndmorph
@@ -83,7 +100,6 @@ def dilation(img, fil):
     return ndmorph.grey_dilation(img, structure=fil)[
         crop_h : img.shape[0] - crop_h, crop_w : img.shape[1] - crop_w,
     ]
-
 
 def erosion(img, fil):
     from scipy.ndimage import morphology as ndmorph
