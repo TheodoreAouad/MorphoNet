@@ -7,7 +7,9 @@ dist
 env
 tags
 mnist
+fashion-mnist
 out*
 *png
 *log
 compressed
+standard
