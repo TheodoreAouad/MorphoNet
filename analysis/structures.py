@@ -15,9 +15,13 @@ nets = { 2: dnets,
          1: snets }
 selems = [ "cross3", "cross7", "diskaa2", "diskaa3", "diamondaa3", "complex" ]
 dop = { "closing": 1,
-        "opening": 0 }
+        "bclosing": 1,
+        "opening": 0,
+        "bopening": 0 }
 sop = { "dilation": 1,
-        "erosion": 0 }
+        "bdilation": 1,
+        "erosion": 0,
+        "berosion": 0 }
 ops = { 1: sop,
         2: dop }
 var_names = { "pconvnet": "p",
