@@ -2,7 +2,7 @@ import numpy as np
 
 def _random_distribution(percentage, size, space=[1]):
     nb_total = size[0] * size[1]
-    nb_el = int(nb_total * percentage / 100)
+    nb_el = int(nb_total * percentage / 100) // len(space)
     arr = np.zeros(nb_total)
     for i in range(len(space)):
         start_index = i * nb_el
@@ -21,5 +21,5 @@ def pepper_noise(img, percentage):
 
 def salt_pepper_noise(img, percentage):
     rand = _random_distribution(percentage, img.shape, [1, 2])
-    arr = np.ma.masked_array(img, (rand == 1).reshape(img.shape)).filled(np.min(img))
-    return np.ma.masked_array(arr, (rand == 2).reshape(img.shape)).filled(np.max(img))
+    arr = np.ma.masked_array(img, (rand == 1).reshape(img.shape)).filled(0)
+    return np.ma.masked_array(arr, (rand == 2).reshape(img.shape)).filled(1)

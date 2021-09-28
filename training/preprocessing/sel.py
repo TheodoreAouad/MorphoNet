@@ -34,5 +34,9 @@ STRUCTURING_ELEMENTS = {
     "bcomplex": lambda filter_shape, dtype: np.where(draw_complex(filter_shape,
             dtype=dtype) < 0.5, 0, 1),
     "bsquare": lambda filter_shape, dtype: draw_bsquare(3, filter_shape, dtype=dtype),
-    "bdiamond": lambda filter_shape, dtype: draw_bdiamond(3, filter_shape, dtype=dtype)
+    "bdiamond": lambda filter_shape, dtype: draw_bdiamond(3, filter_shape, dtype=dtype),
+    "doubledisk9_2": lambda filter_shape, dtype: (draw_disk_aa(4, (9, 9)) - draw_disk_aa(3, (9, 9)) > 0.5) + draw_diamond(2, (9, 9)),
+    "doubledisk9_1": lambda filter_shape, dtype: (draw_disk_aa(4, (9, 9)) - draw_disk_aa(3, (9, 9)) > 0.5) + draw_diamond(1, (9, 9)),
+    "doubledisk7_1": lambda filter_shape, dtype: (draw_disk_aa(3, (7, 7)) - draw_disk_aa(2, (7, 7)) > 0.5),
+    "diag": lambda filter_shape, dtype: np.diag([1] * filter_shape[0])
 }

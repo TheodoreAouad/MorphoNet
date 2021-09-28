@@ -51,12 +51,12 @@ class ModuleVisualizer:
         with h5py.File(f"{self.out_dir}/meta.h5", "w") as f:
             f.create_dataset("inputs", data=self.inputs.cpu().numpy())
             f.create_dataset("targets", data=self.targets.cpu().numpy())
-            if self.percentage != None:
-                f.create_dataset("percentage", data=self.percentage)
-            else:
+            if self.sel_name != None:
                 f.create_dataset("sel", data=self.sel)
                 f.create_dataset("sel_name", data=self.sel_name)
                 f.create_dataset("sel_size", data=self.sel.shape[0])
+            else:
+                f.create_dataset("percentage", data=self.percentage)
             f.create_dataset("batch_size", data=self.batch_size)
             f.create_dataset("max_epochs", data=self.max_epochs)
             f.create_dataset("vis_freq", data=self.freq)

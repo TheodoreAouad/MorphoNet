@@ -116,9 +116,35 @@ def closing(img, fil):
     eroded = erosion(dilated, fil)
     return eroded
 
-
 def opening(img, fil):
     eroded = erosion(img, fil)
     dilated = dilation(eroded, fil)
     return dilated
 
+def bdilation(img, fil):
+    from scipy.ndimage import morphology as ndmorph
+
+    crop_h, crop_w = fil.shape[0] // 2, fil.shape[1] // 2
+
+    return ndmorph.binary_dilation(img > 0, structure=fil)[
+        crop_h : img.shape[0] - crop_h, crop_w : img.shape[1] - crop_w
+    ]
+
+def berosion(img, fil):
+    from scipy.ndimage import morphology as ndmorph
+
+    crop_h, crop_w = fil.shape[0] // 2, fil.shape[1] // 2
+
+    return ndmorph.binary_erosion(img > 0, structure=fil)[
+        crop_h : img.shape[0] - crop_h, crop_w : img.shape[1] - crop_w
+    ]
+
+def bclosing(img, fil):
+    dilated = bdilation(img, fil)
+    eroded = berosion(dilated, fil)
+    return eroded
+
+def bopening(img, fil):
+    eroded = berosion(img, fil)
+    dilated = bdilation(eroded, fil)
+    return dilated

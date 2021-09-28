@@ -445,7 +445,7 @@ def load_sidd(
 
     return x_train, x_valid
 
-def pad_inputs(x, model_name, filter_padding):
+def pad_inputs(x, model_name, filter_padding, pad_value=0):
     if "double" in model_name:
         filter_padding *= 2
     elif "five" in model_name:
@@ -461,7 +461,8 @@ def pad_inputs(x, model_name, filter_padding):
             (filter_padding, filter_padding),
             (filter_padding, filter_padding),
         ),
-        mode="minimum",
+        mode="constant",
+        constant_values=(pad_value,)
     )
 
     return padded
@@ -516,6 +517,8 @@ if __name__ == "__main__":
         #plt.imsave(args.out_dir + "/sel.png", sel.squeeze(), cmap="plasma")
         print("Creating target images...", end="", flush=True)
         y_all = op(x_all, sel)
+        if args.op == 'bdilation' or  args.op == 'berosion' or  args.op == 'bclosing' or  args.op == 'bopening':
+            x_all = x_all > 0
     else:
         sel = None
         out_dir = ensure_dir(
@@ -526,10 +529,14 @@ if __name__ == "__main__":
 
         print(f"Loaded model {model_name}, saving to {out_dir}")
         print("Creating target images...", end="", flush=True)
+        pad_value = 0
+        if (args.op == "saltpepper"):
+            x_all = 0.5 + x_all / 2
+            pad_value = 0.5
         y_all = op(x_all, args.percentage,
                 (args.filter_size, args.filter_size))
 
-        x_all, y_all = pad_inputs(y_all, model_name, args.filter_size // 2), x_all
+        x_all, y_all = pad_inputs(y_all, model_name, args.filter_size // 2, pad_value), x_all
 
     print(" [Done]")
 
