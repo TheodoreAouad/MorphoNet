@@ -36,7 +36,6 @@ class SMorph(nn.Module):
         #     program = ["all"]
         # self.program = program
         # self.program_idx = 0
-
         self.reset_parameters()
 
     def reset_parameters(self):
@@ -45,7 +44,6 @@ class SMorph(nn.Module):
             self.alpha.zero_()
 
     def _smorph_py(self, input, filter, alpha):
-        padding_h, padding_w = filter.size(2) // 2, filter.size(3) // 2
         sum = input.view(
             input.size(0), 1, input.size(1), input.size(2), input.size(3), 1, 1
         ) + filter.view(
@@ -60,33 +58,49 @@ class SMorph(nn.Module):
         for fc in range(filter.size(1)):
             for fy in range(filter.size(2)):
                 for fx in range(filter.size(3)):
-                    upper = upper + sum_exp_sum_alpha[
+                    ps = sum_exp_sum_alpha[
                         :,
                         :,
                         fc,
                         fy : input.size(2) + 1 - filter.size(2) + fy,
-                        fx : input.size(3) + 1 - filter.size(3) + fy,
+                        fx : input.size(3) + 1 - filter.size(3) + fx,
                         :,
                         :,
                     ].sum((4, 5))
+                    upper = upper + ps
                     lower = lower + exp_sum_alpha[
                         :,
                         :,
                         fc,
                         fy : input.size(2) + 1 - filter.size(2) + fy,
-                        fx : input.size(3) + 1 - filter.size(3) + fy,
+                        fx : input.size(3) + 1 - filter.size(3) + fx,
                         :,
                         :,
                     ].sum((4, 5))
-                    print(upper.size(), lower.size())
 
         smorph = upper / lower
 
         return smorph
 
+    def _smorph_py2(self, input, filter, alpha):
+        pad_h, pad_w = filter.size(2) // 2, filter.size(3) // 2
+
+        unfolder = nn.Unfold(kernel_size=(filter.size(2), filter.size(3)))
+        unfolded = unfolder(input)
+
+        sum = unfolded.transpose(1, 2) + torch.tanh(alpha) * filter.squeeze().ravel()
+        sum_alpha = alpha.squeeze() * sum
+        exp_sum_alpha = sum_alpha.exp()
+        sum_exp_sum_alpha = sum * exp_sum_alpha
+
+        res = sum_exp_sum_alpha.sum(2) / exp_sum_alpha.sum(2)
+
+        return res.view(input.size(0), input.size(1), input.size(2) - 2 * pad_h,
+                        input.size(3) - 2 * pad_w)
+
     def _smorph(self, input, filter, alpha):
         return torch.ops.smorph.smorph(input, filter, alpha)
-        # return self._smorph_py(input, filter, alpha)
+        #return self._smorph_py2(input, filter, alpha)
 
     def forward(self, input):
         out = self._smorph(input, self.filter, self.alpha)

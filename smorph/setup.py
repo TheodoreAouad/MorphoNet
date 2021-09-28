@@ -3,7 +3,7 @@ from torch.utils.cpp_extension import BuildExtension, CUDAExtension
 
 setup(
     name="torch_smorph",
-    version="0.0.0",
+    version="0.0.3",
     description="PyTorch implementation of the SmoothMorph operation.",
     author="Alexandre Kirszenberg",
     author_email="alexandre.kirszenberg@lrde.epita.fr",
