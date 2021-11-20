@@ -331,26 +331,32 @@ def load_mnist(**kwargs):
         .astype(dtype)
     )
 
+    images_tr, images_te = images_train / 255.0, images_test / 255.0
+    print(f"max: {images_tr.max()}, min: {images_tr.min()}, mean: {images_tr.mean()}, var: {images_tr.var()}, std: {images_tr.std()}")
+    print(f"max: {images_te.max()}, min: {images_te.min()}, mean: {images_te.mean()}, var: {images_te.var()}, std: {images_te.std()}")
     x_all = np.concatenate((images_train, images_test))
 
     # Load as NCHW.
     x_all = x_all[:, np.newaxis, :, :].astype(dtype)
     x_all /= 255.0
+    print(f"max: {x_all.max()}, min: {x_all.min()}, mean: {x_all.mean()}, var: {x_all.var()}, std: {x_all.std()}")
+    x_all = (x_all - 0.08879366428232185) / 0.2612764329719987
+    print(f"max: {x_all.max()}, min: {x_all.min()}, mean: {x_all.mean()}, var: {x_all.var()}, std: {x_all.std()}")
 
-    filter_padding = kwargs["filter_size"] // 2
-    if kwargs["op"] == "closing" or kwargs["op"] == "opening":
-        filter_padding *= 2
-    if kwargs["sel"] is not None:
-        x_all = np.pad(
-            x_all,
-            (
-                (0, 0),
-                (0, 0),
-                (filter_padding, filter_padding),
-                (filter_padding, filter_padding),
-            ),
-            mode="minimum",
-        )
+#    filter_padding = kwargs["filter_size"] // 2
+#    if kwargs["op"] == "closing" or kwargs["op"] == "opening":
+#        filter_padding *= 2
+#    if kwargs["sel"] is not None:
+#        x_all = np.pad(
+#            x_all,
+#            (
+#                (0, 0),
+#                (0, 0),
+#                (filter_padding, filter_padding),
+#                (filter_padding, filter_padding),
+#            ),
+#            mode="minimum",
+#        )
 
     return x_all[: len(images_train)], x_all[len(images_train) :]
 
@@ -376,20 +382,20 @@ def load_fmnist(**kwargs):
     x_all = x_all[:, np.newaxis, :, :].astype(dtype)
     x_all /= 255.0
 
-    filter_padding = kwargs["filter_size"] // 2
-    if kwargs["op"] == "closing" or kwargs["op"] == "opening":
-        filter_padding *= 2
-    if kwargs["sel"] is not None:
-        x_all = np.pad(
-            x_all,
-            (
-                (0, 0),
-                (0, 0),
-                (filter_padding, filter_padding),
-                (filter_padding, filter_padding),
-            ),
-            mode="minimum",
-        )
+#    filter_padding = kwargs["filter_size"] // 2
+#    if kwargs["op"] == "closing" or kwargs["op"] == "opening":
+#        filter_padding *= 2
+#    if kwargs["sel"] is not None:
+#        x_all = np.pad(
+#            x_all,
+#            (
+#                (0, 0),
+#                (0, 0),
+#                (filter_padding, filter_padding),
+#                (filter_padding, filter_padding),
+#            ),
+#            mode="minimum",
+#        )
 
     return x_all[: len(images_train)], x_all[len(images_train) :]
 
@@ -470,9 +476,10 @@ def pad_inputs(x, model_name, filter_padding, pad_value=0):
 
 LOADERS = {"sidd": load_sidd, "mnist": load_mnist, "fashion_mnist": load_fmnist}
 
-
 if __name__ == "__main__":
+    print("<INFO> Parsing command line...", end="", flush=True)
     args = parser.parse_args()
+    print(" [DONE]")
 
     def split_arg(value, mapper=lambda a: a):
         if value is None:
@@ -480,27 +487,31 @@ if __name__ == "__main__":
         return [mapper(v) for v in value.split(",")]
 
     gpus = [ (i, torch.cuda.get_device_name(i)) for i in range(torch.cuda.device_count()) ]
-    print(f"Available GPUs: {gpus}")
+    print(f"<INFO> Available GPUs: {gpus}")
     device = torch.device(f"cuda:{args.gpu}")
     torch.cuda.set_device(device)
 
-    print(f"Running on '{torch.cuda.get_device_name()}'")
+    print(f"<INFO> Running on '{torch.cuda.get_device_name()}'")
 
     dtype = PRECISIONS[args.precision]
     torch.set_default_dtype(dtype)
 
     kwargs = {"dtype": dtype, "device": device}
 
+    print(f"<INFO> Loading model...", end="", flush=True)
     model_name, model, opt, scheduler = get_model(
         args.model, {"filter_size": args.filter_size, **kwargs}
     )
+    print(" [DONE]")
 
-
+    print("<INFO> Loading dataset...", end="", flush=True)
     x_train, x_valid = LOADERS[args.dataset](**vars(args))
     x_all = np.concatenate((x_train, x_valid))
+    print(" [DONE]")
 
     loss_func = LOSSES[args.loss]()
     op = OPS[args.op]
+    print(f"======================== {args.op}, {op}")
     if args.sel != None:
         sel = STRUCTURING_ELEMENTS[args.sel](
             filter_shape=(args.filter_size, args.filter_size),
@@ -513,10 +524,16 @@ if __name__ == "__main__":
             )
         )
 
-        print(f"Loaded model {model_name}, saving to {out_dir}")
-        #plt.imsave(args.out_dir + "/sel.png", sel.squeeze(), cmap="plasma")
-        print("Creating target images...", end="", flush=True)
+        print(f"<INFO> Saving to {out_dir}")
+#        plt.imsave(args.out_dir + "/sel.png", sel.squeeze(), cmap="plasma")
+
+        print("<INFO> Creating target images...", end="", flush=True)
         y_all = op(x_all, sel)
+        np.save('y_all.npy', y_all[:10])
+        print(" [Done]")
+
+        print(f"<INFO> x_all.shape: {x_all.shape}, y_all.shape {y_all.shape}")
+
         if args.op == 'bdilation' or  args.op == 'berosion' or  args.op == 'bclosing' or  args.op == 'bopening':
             x_all = x_all > 0
     else:
@@ -527,8 +544,8 @@ if __name__ == "__main__":
             )
         )
 
-        print(f"Loaded model {model_name}, saving to {out_dir}")
-        print("Creating target images...", end="", flush=True)
+        print(f"<INFO> Saving to {out_dir}")
+        print("<INFO> Creating target images...", end="", flush=True)
         pad_value = 0
         if (args.op == "saltpepper"):
             x_all = 0.5 + x_all / 2
@@ -538,7 +555,7 @@ if __name__ == "__main__":
 
         x_all, y_all = pad_inputs(y_all, model_name, args.filter_size // 2, pad_value), x_all
 
-    print(" [Done]")
+        print(" [Done]")
 
     # Normalization step.
     # x_all = (x_all - np.min(x_all)) / (np.max(x_all) - np.min(x_all)) - 0.5
@@ -546,7 +563,7 @@ if __name__ == "__main__":
 #x_all = (x_all - np.mean(x_all)) / np.std(x_all)
     # y_all = (y_all - np.mean(y_all)) / np.std(y_all)
 
-    print(f"X: {x_all.shape}\nY: {y_all.shape}")
+#print(f"X: {x_all.shape}\nY: {y_all.shape}")
 
     #plt.imsave(args.out_dir + "/x.png", x_all[0].squeeze(), cmap="plasma")
     #plt.imsave(args.out_dir + "/y.png", y_all[0].squeeze(), cmap="plasma")
