@@ -4,7 +4,7 @@ __pycache__
 build
 dist
 *.egg-info
-env
+env*
 tags
 mnist
 fashion-mnist
@@ -13,3 +13,6 @@ out*
 *log
 compressed
 standard
+*.npy
+run_dsmorph.sh
+test_*
