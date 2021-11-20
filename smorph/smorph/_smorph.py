@@ -1,12 +1,13 @@
 import torch
 from torch import nn
 
-
 def _pair(s):
     if isinstance(s, int):
         return (s, s)
     return s
 
+def _init_folded_normal_(tensor: torch.Tensor, mean=0.0, std=1.0, fold=0.0):
+    tensor.normal_(mean, std).sub_(fold).abs_().add_(fold)
 
 class SMorph(nn.Module):
     def __init__(
@@ -19,9 +20,9 @@ class SMorph(nn.Module):
         **kwargs,
     ):
         super(SMorph, self).__init__()
-        filter_size = _pair(filter_size)
+        self.filter_size = filter_size
         self.filter = nn.Parameter(
-            torch.empty((out_channels, in_channels, *filter_size), **kwargs)
+            torch.empty((out_channels, in_channels, *_pair(filter_size)), **kwargs)
         )
         self.dual = dual
 
@@ -40,7 +41,12 @@ class SMorph(nn.Module):
 
     def reset_parameters(self):
         with torch.no_grad():
+#            _init_folded_normal_(self.filter, 0.0, 0.01)
             self.filter.normal_(0.0, 0.01)
+#            self.filter[:, :, 0, 0:self.filter_size] = 1
+#            self.filter[:, :, self.filter_size - 1, 0:self.filter_size] = 1
+#            self.filter[:, :, 1:self.filter_size - 1, 0] = 1
+#            self.filter[:, :, 1:self.filter_size - 1, self.filter_size - 1] = 1
             self.alpha.zero_()
 
     def _smorph_py(self, input, filter, alpha):
@@ -84,23 +90,28 @@ class SMorph(nn.Module):
 
     def _smorph_py2(self, input, filter, alpha):
         pad_h, pad_w = filter.size(2) // 2, filter.size(3) // 2
+        input_padded = nn.functional.pad(input, (pad_w, pad_w, pad_h, pad_h), mode='reflect')
+
+#        imin = input_padded.min().detach()
+#        imax = input_padded.max().detach()
+#        input_padded = 1 + (input_padded - imin) / (imax - imin)
 
         unfolder = nn.Unfold(kernel_size=(filter.size(2), filter.size(3)))
-        unfolded = unfolder(input)
+        unfolded = unfolder(input_padded)
 
-        sum = unfolded.transpose(1, 2) + torch.tanh(alpha) * filter.squeeze().ravel()
+#        sum = unfolded.transpose(1, 2) + torch.tanh(alpha) * filter.squeeze().ravel()
+        sum = unfolded.transpose(1, 2) + filter.squeeze().ravel()
         sum_alpha = alpha.squeeze() * sum
         exp_sum_alpha = sum_alpha.exp()
         sum_exp_sum_alpha = sum * exp_sum_alpha
 
         res = sum_exp_sum_alpha.sum(2) / exp_sum_alpha.sum(2)
 
-        return res.view(input.size(0), input.size(1), input.size(2) - 2 * pad_h,
-                        input.size(3) - 2 * pad_w)
+        return res.view(input.size(0), input.size(1), input.size(2), input.size(3))
 
     def _smorph(self, input, filter, alpha):
-        return torch.ops.smorph.smorph(input, filter, alpha)
-        #return self._smorph_py2(input, filter, alpha)
+#        return torch.ops.smorph.smorph(input, filter, alpha)
+        return self._smorph_py2(input, filter, alpha)
 
     def forward(self, input):
         out = self._smorph(input, self.filter, self.alpha)

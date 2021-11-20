@@ -70,10 +70,13 @@ class LMorph(nn.Module):
             self.p.zero_()
 
     def _lmorph(self, input, filter, p):
-        imin = input.min().detach()
-        imax = input.max().detach()
-        input = 1.0 + (input - imin) / (imax - imin)
-        return torch.ops.lmorph.lmorph(input, filter, p)
+        pad_h, pad_w = filter.size(2) // 2, filter.size(3) // 2
+        input_padded = nn.functional.pad(input, (pad_w, pad_w, pad_h, pad_h), mode='reflect')
+
+        imin = input_padded.min().detach()
+        imax = input_padded.max().detach()
+        input_padded = 1.0 + (input_padded - imin) / (imax - imin)
+        return torch.ops.lmorph.lmorph(input_padded, filter, p)
 
     def forward(self, input):
         out = self._lmorph(input, self.filter, self.p)
