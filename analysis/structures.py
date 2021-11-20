@@ -17,6 +17,7 @@ selems = [ "cross3", "cross7", "diskaa2", "diskaa3", "diamondaa3", "complex" ]
 dop = { "closing": 1,
         "bclosing": 1,
         "opening": 0,
+        "wtophat": 0,
         "bopening": 0 }
 sop = { "dilation": 1,
         "bdilation": 1,
