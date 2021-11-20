@@ -7,7 +7,10 @@ from .morpho import (
     draw_x,
     draw_complex,
     draw_bsquare,
-    draw_bdiamond
+    draw_bdiamond,
+    draw_adiag,
+    draw_iadiag,
+    draw_siadiag
 )
 from numpy.random import default_rng
 import numpy as np
@@ -37,6 +40,10 @@ STRUCTURING_ELEMENTS = {
     "bdiamond": lambda filter_shape, dtype: draw_bdiamond(3, filter_shape, dtype=dtype),
     "doubledisk9_2": lambda filter_shape, dtype: (draw_disk_aa(4, (9, 9)) - draw_disk_aa(3, (9, 9)) > 0.5) + draw_diamond(2, (9, 9)),
     "doubledisk9_1": lambda filter_shape, dtype: (draw_disk_aa(4, (9, 9)) - draw_disk_aa(3, (9, 9)) > 0.5) + draw_diamond(1, (9, 9)),
-    "doubledisk7_1": lambda filter_shape, dtype: (draw_disk_aa(3, (7, 7)) - draw_disk_aa(2, (7, 7)) > 0.5),
-    "diag": lambda filter_shape, dtype: np.diag([1] * filter_shape[0])
+    "doubledisk7_0": lambda filter_shape, dtype: (draw_disk_aa(3, (7, 7)) - draw_disk_aa(2, (7, 7)) > 0.5),
+    "doubledisk7_1": lambda filter_shape, dtype: (draw_disk_aa(3, (7, 7)) - draw_disk_aa(2, (7, 7)) > 0.5) + draw_disk(0, (7, 7)),
+    "diag": lambda filter_shape, dtype: np.diag([1] * filter_shape[0]),
+    "adiag": lambda filter_shape, dtype: draw_adiag(7, filter_shape, dtype=dtype),
+    "iadiag": lambda filter_shape, dtype: draw_iadiag(7, filter_shape, dtype=dtype),
+    "siadiag": lambda filter_shape, dtype: draw_siadiag(7, filter_shape, dtype=dtype)
 }

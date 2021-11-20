@@ -92,24 +92,56 @@ def draw_bdiamond(size, shape=None, dtype="float32"):
         return center_in(res, shape, dtype=dtype)
     return res
 
+def draw_siadiag(size, shape=None, dtype="float32"):
+    diag = np.diag([1] * size)
+    diag[3, 4:5] = 1
+    diag[1:3, 4] = 1
+    diag[1, 3] = 1
+    diag[0, 0] = 0
+
+    return diag
+
+def draw_iadiag(size, shape=None, dtype="float32"):
+    diag = np.diag([1] * size)
+    diag[3, 4:5] = 1
+    diag[1:3, 4] = 1
+    diag[1, 3] = 1
+    diag[0, 0] = 0
+    diag[6, 6] = 0
+
+    return diag
+
+def draw_adiag(size, shape=None, dtype="float32"):
+    diag = np.diag([1] * size)
+    diag[3, 4:5] = 1
+    diag[1:3, 4] = 1
+    diag[1, 3] = 1
+
+    return diag
+
+#####################
+# Morpho Operations #
+#####################
+
 def dilation(img, fil):
     from scipy.ndimage import morphology as ndmorph
 
     crop_h, crop_w = fil.shape[0] // 2, fil.shape[1] // 2
 
-    return ndmorph.grey_dilation(img, structure=fil)[
-        crop_h : img.shape[0] - crop_h, crop_w : img.shape[1] - crop_w,
-    ]
+#    return ndmorph.grey_dilation(img, structure=fil)[
+#        crop_h : img.shape[0] - crop_h, crop_w : img.shape[1] - crop_w,
+#    ]
+    return ndmorph.grey_dilation(img, structure=fil)
 
 def erosion(img, fil):
     from scipy.ndimage import morphology as ndmorph
 
     crop_h, crop_w = fil.shape[0] // 2, fil.shape[1] // 2
 
-    return ndmorph.grey_erosion(img, structure=fil)[
-        crop_h : img.shape[0] - crop_h, crop_w : img.shape[1] - crop_w
-    ]
-
+#    return ndmorph.grey_erosion(img, structure=fil)[
+#        crop_h : img.shape[0] - crop_h, crop_w : img.shape[1] - crop_w
+#    ]
+    return ndmorph.grey_erosion(img, structure=fil)
 
 def closing(img, fil):
     dilated = dilation(img, fil)
@@ -120,6 +152,14 @@ def opening(img, fil):
     eroded = erosion(img, fil)
     dilated = dilation(eroded, fil)
     return dilated
+
+def wtophat(img, fil):
+    opened = opening(img, fil)
+    return img - opened
+
+#####################
+# Binary Operations #
+#####################
 
 def bdilation(img, fil):
     from scipy.ndimage import morphology as ndmorph
