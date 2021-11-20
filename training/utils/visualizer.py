@@ -114,6 +114,12 @@ class ModuleVisualizer:
 
                 layer_group.create_dataset("output", data=outputs[name])
 
+            for param_name, param in self.module.named_parameters():
+                if '.' not in param_name:
+                    layers_group.create_dataset(
+                        param_name, data=param.data.cpu().numpy(),
+                    )
+
         self.saved_batch += 1
 
     def step_epoch(self):
