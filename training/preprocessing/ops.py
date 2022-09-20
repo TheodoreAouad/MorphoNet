@@ -106,4 +106,8 @@ OPS_NOISE = {
     "saltpepper": preprocess_salt_pepper
 }
 
-OPS = dict(OPS_MORPH, **OPS_NOISE)
+OPS_CLASSIF = {
+    "classif": None
+}
+
+OPS = dict(dict(OPS_MORPH, **OPS_NOISE), **OPS_CLASSIF)

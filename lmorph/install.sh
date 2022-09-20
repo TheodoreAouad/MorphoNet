@@ -6,4 +6,4 @@ set -e
 export CC=gcc-8
 export CXX=g++-8
 
-../env/bin/python setup.py install
+../env_test/bin/python setup.py install

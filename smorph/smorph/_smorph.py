@@ -95,12 +95,13 @@ class SMorph(nn.Module):
 #        imin = input_padded.min().detach()
 #        imax = input_padded.max().detach()
 #        input_padded = 1 + (input_padded - imin) / (imax - imin)
+#        input_padded = (input_padded - imin) / (imax - imin)
 
         unfolder = nn.Unfold(kernel_size=(filter.size(2), filter.size(3)))
         unfolded = unfolder(input_padded)
 
-#        sum = unfolded.transpose(1, 2) + torch.tanh(alpha) * filter.squeeze().ravel()
-        sum = unfolded.transpose(1, 2) + filter.squeeze().ravel()
+        sum = unfolded.transpose(1, 2) + torch.tanh(alpha) * filter.squeeze().ravel()
+#        sum = unfolded.transpose(1, 2) + filter.squeeze().ravel()
         sum_alpha = alpha.squeeze() * sum
         exp_sum_alpha = sum_alpha.exp()
         sum_exp_sum_alpha = sum * exp_sum_alpha

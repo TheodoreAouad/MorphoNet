@@ -33,10 +33,13 @@ def make_ssim_loss():
 def make_mse_loss():
     return nn.MSELoss()
 
+def make_crossentropy_loss():
+    return nn.CrossEntropyLoss()
 
 LOSSES = {
     "ssim": make_ssim_loss,
     "mse": make_mse_loss,
+    "crossentropy": make_crossentropy_loss,
 }
 
 PRECISIONS = {"f32": torch.float32, "f64": torch.float64}
@@ -46,7 +49,7 @@ parser = argparse.ArgumentParser(description="Train a model.")
 parser.add_argument("model", help="model to load")
 parser.add_argument("loss", choices=LOSSES.keys(), help="loss to use")
 
-parser.add_argument("op", choices=OPS.keys(), help="operation to perform")
+parser.add_argument("--op", default=None, choices=OPS.keys(), help="operation to perform")
 parser.add_argument(
     "--sel", choices=STRUCTURING_ELEMENTS.keys(), help="structuring element to use"
 )
@@ -100,6 +103,12 @@ subparsers = parser.add_subparsers(help="Dataset to train on", dest="dataset")
 
 mnist_parser = subparsers.add_parser("mnist", help="Train on MNIST")
 mnist_parser.add_argument("dataset_path", help="dataset to train on")
+
+biwtoh_parser = subparsers.add_parser("biwtoh", help="Train on BiWToH")
+biwtoh_parser.add_argument("dataset_path", help="dataset to train on")
+
+gwtoh_parser = subparsers.add_parser("gwtoh", help="Train on BiWToH")
+gwtoh_parser.add_argument("dataset_path", help="dataset to train on")
 
 fashion_mnist_parser = subparsers.add_parser("fashion_mnist", help="Train on FashionMNIST")
 fashion_mnist_parser.add_argument("dataset_path", help="dataset to train on")
@@ -163,21 +172,27 @@ def get_model(model_path, model_args):
     return (model_name, *get_actual_model(model_args))
 
 
-def loss_batch(model, loss_func, xb, yb, opt=None):
+def loss_batch(model, loss_func, xb, yb, opt=None, classif=False):
     if opt is None:
         batch_start = time.time_ns()
         out = model(xb)
         batch_elapsed = time.time_ns() - batch_start
-        loss = loss_func(out, yb)
+        if classif:
+            loss = loss_func(out, yb.max(dim=1)[1].long())
+        else:
+            loss = loss_func(out, yb)
     else:
-
         def evaluate():
             nonlocal batch_elapsed
+            nonlocal out
             opt.zero_grad()
             batch_start = time.time_ns()
             out = model(xb)
             batch_elapsed = time.time_ns() - batch_start
-            loss = loss_func(out, yb)
+            if classif:
+                loss = loss_func(out, yb.max(dim=1)[1].long())
+            else:
+                loss = loss_func(out, yb)
             loss_start = time.time_ns()
             loss.backward()
             batch_elapsed += time.time_ns() - loss_start
@@ -190,7 +205,7 @@ def loss_batch(model, loss_func, xb, yb, opt=None):
                 if hasattr(module, "after_batch"):
                     module.after_batch()
 
-    return loss.item(), batch_elapsed
+    return loss.item(), batch_elapsed, out
 
 
 import math
@@ -211,14 +226,18 @@ def format_duration(d):
     return f"{round(d)}{unit}"
 
 
-def format_stats(stats, prefix=""):
+def format_stats(stats, prefix="", accuracy=False):
     loss, elapsed = stats["loss"], stats["elapsed"]
     loss_fmt = f"{loss:6g}".rjust(10, " ")
     elapsed_fmt = format_duration(elapsed).rjust(8, " ")
-    return f"{prefix}loss: {loss_fmt}, {prefix}elapsed: {elapsed_fmt}"
+    if accuracy:
+        accu = stats["accuracy"]
+        accu_fmt = f"{accu:6g}".rjust(10, " ")
+        return f"{prefix}loss: {loss_fmt},{prefix}accuracy: {accu_fmt},{prefix}elapsed: {elapsed_fmt}"
+    return f"{prefix}loss: {loss_fmt},{prefix}elapsed: {elapsed_fmt}"
 
 
-def run_epoch(desc, model, loss_func, dl, opt=None, visualizer=None):
+def run_epoch(desc, model, loss_func, dl, opt=None, visualizer=None, accuracy=False):
     with tqdm(
         total=len(dl),
         leave=False,
@@ -229,7 +248,7 @@ def run_epoch(desc, model, loss_func, dl, opt=None, visualizer=None):
         epoch_elapsed = 0.0
         epoch_seen = 0
         for batch, (xb, yb) in enumerate(dl):
-            loss_item, batch_elapsed = loss_batch(model, loss_func, xb, yb, opt)
+            loss_item, batch_elapsed, out = loss_batch(model, loss_func, xb, yb, opt, classif=accuracy)
 
             # The loss is already divided by the number of elements (reduction = 'mean').
             epoch_loss += loss_item * len(xb)
@@ -241,17 +260,26 @@ def run_epoch(desc, model, loss_func, dl, opt=None, visualizer=None):
             batch_fmt = str(batch).rjust(math.ceil(math.log10(len(dl))), "0")
             pbar.postfix[0]["left"] = f"{desc}: {batch_fmt}/{len(dl)}"
             stats = {"loss": loss, "elapsed": elapsed}
-            pbar.postfix[0]["right"] = format_stats(stats)
+            if accuracy:
+#                print(yb.shape, xb.shape, out.shape)
+#                print(xb.argmax(1).shape)
+#                print(nn.functional.one_hot(out.argmax(1), num_classes=10).shape)
+                accu = (yb == nn.functional.one_hot(out.argmax(1), num_classes=10)).sum() / (yb.size(0) * 10)
+                accu = accu.item()
+                stats = {"loss": loss, "accuracy": accu, "elapsed": elapsed}
+            pbar.postfix[0]["right"] = format_stats(stats, accuracy=accuracy)
             pbar.update()
 
             if visualizer is not None:
                 visualizer.step_batch({"loss": loss})
+                if accuracy:
+                    visualizer.step_batch({"loss": loss, "accuracy": accu})
 
     return stats
 
 
 def fit(model, epochs, patience, loss_func, opt, scheduler, train_dl, valid_dl,
-        visualizer):
+        visualizer, accuracy=False):
     total_elapsed = 0.0
     total_seen = 0
     params = map(lambda param_group: param_group["params"], opt.param_groups)
@@ -270,15 +298,16 @@ def fit(model, epochs, patience, loss_func, opt, scheduler, train_dl, valid_dl,
             train_dl,
             opt=opt,
             visualizer=visualizer,
+            accuracy=accuracy
         )
 
         model.eval()
         with torch.no_grad():
             valid_stats = run_epoch(
-                f"Epoch {epoch} (valid)", model, loss_func, valid_dl
+                f"Epoch {epoch} (valid)", model, loss_func, valid_dl, accuracy=accuracy
             )
 
-        log = f"Epoch {epoch}: {format_stats(stats)}, {format_stats(valid_stats, 'valid_')}"
+        log = f"Epoch {epoch}: {format_stats(stats, accuracy=accuracy)},{format_stats(valid_stats, 'valid_', accuracy)}"
 
         if valid_stats["loss"] < best_valid_loss:
             # Only consider significant changes.
@@ -320,28 +349,32 @@ def load_mnist(**kwargs):
 
     dtype = PRECISIONS_NP[kwargs["precision"]]
 
+    train_set = torchvision.datasets.MNIST(kwargs["dataset_path"])
     images_train = (
-        torchvision.datasets.MNIST(kwargs["dataset_path"])
-        .data.numpy()
-        .astype(dtype)
-    )
-    images_test = (
-        torchvision.datasets.MNIST(kwargs["dataset_path"], train=False)
+        train_set
         .data.numpy()
         .astype(dtype)
     )
 
-    images_tr, images_te = images_train / 255.0, images_test / 255.0
-    print(f"max: {images_tr.max()}, min: {images_tr.min()}, mean: {images_tr.mean()}, var: {images_tr.var()}, std: {images_tr.std()}")
-    print(f"max: {images_te.max()}, min: {images_te.min()}, mean: {images_te.mean()}, var: {images_te.var()}, std: {images_te.std()}")
+    labels_train = train_set.targets.numpy().astype(np.int8)
+
+    test_set = torchvision.datasets.MNIST(kwargs["dataset_path"], train=False)
+    images_test = (
+        test_set
+        .data.numpy()
+        .astype(dtype)
+    )
+
+    labels_test = test_set.targets.numpy().astype(np.int8)
+
     x_all = np.concatenate((images_train, images_test))
+    y_all = np.concatenate((labels_train, labels_test))
 
     # Load as NCHW.
     x_all = x_all[:, np.newaxis, :, :].astype(dtype)
     x_all /= 255.0
-    print(f"max: {x_all.max()}, min: {x_all.min()}, mean: {x_all.mean()}, var: {x_all.var()}, std: {x_all.std()}")
-    x_all = (x_all - 0.08879366428232185) / 0.2612764329719987
-    print(f"max: {x_all.max()}, min: {x_all.min()}, mean: {x_all.mean()}, var: {x_all.var()}, std: {x_all.std()}")
+#    print(f"max: {x_all.max()}, min: {x_all.min()}, mean: {x_all.mean()}, var: {x_all.var()}, std: {x_all.std()}")
+#    print(f"max: {x_all.max()}, min: {x_all.min()}, mean: {x_all.mean()}, var: {x_all.var()}, std: {x_all.std()}")
 
 #    filter_padding = kwargs["filter_size"] // 2
 #    if kwargs["op"] == "closing" or kwargs["op"] == "opening":
@@ -357,6 +390,14 @@ def load_mnist(**kwargs):
 #            ),
 #            mode="minimum",
 #        )
+    if kwargs["classif"]:
+        idx = np.arange(x_all.shape[0]) * 10 + y_all
+        y_all = np.zeros(x_all.shape[0] * 10)
+        y_all[idx] = 1
+        y_all = y_all.reshape(-1, 10)
+
+        return (x_all[: len(images_train)], x_all[len(images_train) :],
+                y_all[: len(labels_train)], y_all[len(labels_train) :])
 
     return x_all[: len(images_train)], x_all[len(images_train) :]
 
@@ -365,18 +406,26 @@ def load_fmnist(**kwargs):
 
     dtype = PRECISIONS_NP[kwargs["precision"]]
 
+    train_set = torchvision.datasets.FashionMNIST(kwargs["dataset_path"])
     images_train = (
-        torchvision.datasets.FashionMNIST(kwargs["dataset_path"])
-        .data.numpy()
-        .astype(dtype)
-    )
-    images_test = (
-        torchvision.datasets.FashionMNIST(kwargs["dataset_path"], train=False)
+        train_set
         .data.numpy()
         .astype(dtype)
     )
 
+    labels_train = train_set.targets.numpy().astype(np.int8)
+
+    test_set = torchvision.datasets.FashionMNIST(kwargs["dataset_path"], train=False)
+    images_test = (
+        test_set
+        .data.numpy()
+        .astype(dtype)
+    )
+
+    labels_test = test_set.targets.numpy().astype(np.int8)
+
     x_all = np.concatenate((images_train, images_test))
+    y_all = np.concatenate((labels_train, labels_test))
 
     # Load as NCHW.
     x_all = x_all[:, np.newaxis, :, :].astype(dtype)
@@ -397,7 +446,31 @@ def load_fmnist(**kwargs):
 #            mode="minimum",
 #        )
 
+    if kwargs["classif"]:
+        idx = np.arange(x_all.shape[0]) * 10 + y_all
+        y_all = np.zeros(x_all.shape[0] * 10)
+        y_all[idx] = 1
+        y_all = y_all.reshape(-1, 10)
+
+        return (x_all[: len(images_train)], x_all[len(images_train) :],
+                y_all[: len(labels_train)], y_all[len(labels_train) :])
+
     return x_all[: len(images_train)], x_all[len(images_train) :]
+
+def load_biwtoh(**kwargs):
+    import torchvision
+
+    dtype = PRECISIONS_NP[kwargs["precision"]]
+
+    images_train = np.load(f"{kwargs['dataset_path']}/train-images.npy")
+    labels_train = np.load(f"{kwargs['dataset_path']}/train-labels.npy")
+    images_test = np.load(f"{kwargs['dataset_path']}/t10k-images.npy")
+    labels_test = np.load(f"{kwargs['dataset_path']}/t10k-labels.npy")
+
+    x_train, x_test = images_train.astype(dtype), images_test.astype(dtype)
+    y_train, y_test = labels_train.astype(dtype), labels_test.astype(dtype)
+
+    return x_train, y_train, x_test, y_test
 
 def load_sidd(
     *,
@@ -473,8 +546,8 @@ def pad_inputs(x, model_name, filter_padding, pad_value=0):
 
     return padded
 
-
-LOADERS = {"sidd": load_sidd, "mnist": load_mnist, "fashion_mnist": load_fmnist}
+LOADERS = {"sidd": load_sidd, "mnist": load_mnist, "fashion_mnist": load_fmnist,
+           "biwtoh": load_biwtoh, "gwtoh": load_biwtoh}
 
 if __name__ == "__main__":
     print("<INFO> Parsing command line...", end="", flush=True)
@@ -504,15 +577,51 @@ if __name__ == "__main__":
     )
     print(" [DONE]")
 
-    print("<INFO> Loading dataset...", end="", flush=True)
-    x_train, x_valid = LOADERS[args.dataset](**vars(args))
-    x_all = np.concatenate((x_train, x_valid))
-    print(" [DONE]")
-
     loss_func = LOSSES[args.loss]()
-    op = OPS[args.op]
-    print(f"======================== {args.op}, {op}")
-    if args.sel != None:
+
+    accuracy = False
+    if args.op == "classif":
+        sel = None
+        accuracy = True
+
+        out_dir = ensure_dir(
+            get_out_dir(
+                f"{args.out_dir}/{args.dataset}_{model_name}_{args.loss}"
+            )
+        )
+        print(f"<INFO> Saving to {out_dir}")
+
+        print("<INFO> Loading dataset...", end="", flush=True)
+        x_train, x_valid, y_train, y_valid = LOADERS[args.dataset](**vars(args),
+                classif=True)
+
+        x_all = np.concatenate((x_train, x_valid))
+        y_all = np.concatenate((y_train, y_valid))
+        print(" [DONE]")
+
+    elif args.dataset == "biwtoh" or args.dataset == "gwtoh":
+        sel = None
+        out_dir = ensure_dir(
+            get_out_dir(
+                f"{args.out_dir}/{args.dataset}_{model_name}_{args.loss}"
+            )
+        )
+        print(f"<INFO> Saving to {out_dir}")
+
+        print("<INFO> Loading dataset...", end="", flush=True)
+        x_train, y_train, x_valid, y_valid = LOADERS[args.dataset](**vars(args), classif=False)
+
+        x_all = np.concatenate((x_train, x_valid))
+        y_all = np.concatenate((y_train, y_valid))
+        print(" [DONE]")
+    elif args.sel != None:
+        op = OPS[args.op]
+
+        print("<INFO> Loading dataset...", end="", flush=True)
+        x_train, x_valid = LOADERS[args.dataset](**vars(args), classif=False)
+        x_all = np.concatenate((x_train, x_valid))
+        print(" [DONE]")
+
         sel = STRUCTURING_ELEMENTS[args.sel](
             filter_shape=(args.filter_size, args.filter_size),
             dtype=PRECISIONS_NP[args.precision],
@@ -529,7 +638,6 @@ if __name__ == "__main__":
 
         print("<INFO> Creating target images...", end="", flush=True)
         y_all = op(x_all, sel)
-        np.save('y_all.npy', y_all[:10])
         print(" [Done]")
 
         print(f"<INFO> x_all.shape: {x_all.shape}, y_all.shape {y_all.shape}")
@@ -537,6 +645,13 @@ if __name__ == "__main__":
         if args.op == 'bdilation' or  args.op == 'berosion' or  args.op == 'bclosing' or  args.op == 'bopening':
             x_all = x_all > 0
     else:
+        op = OPS[args.op]
+
+        print("<INFO> Loading dataset...", end="", flush=True)
+        x_train, x_valid = LOADERS[args.dataset](**vars(args), classif=False)
+        x_all = np.concatenate((x_train, x_valid))
+        print(" [DONE]")
+
         sel = None
         out_dir = ensure_dir(
             get_out_dir(
@@ -560,7 +675,7 @@ if __name__ == "__main__":
     # Normalization step.
     # x_all = (x_all - np.min(x_all)) / (np.max(x_all) - np.min(x_all)) - 0.5
     # y_all = (y_all - np.min(y_all)) / (np.max(y_all) - np.min(y_all)) - 0.5
-#x_all = (x_all - np.mean(x_all)) / np.std(x_all)
+    x_all = (x_all - np.mean(x_all)) / np.std(x_all)
     # y_all = (y_all - np.mean(y_all)) / np.std(y_all)
 
 #print(f"X: {x_all.shape}\nY: {y_all.shape}")
@@ -577,6 +692,7 @@ if __name__ == "__main__":
         torch.tensor(x_valid, **kwargs),
         torch.tensor(y_valid, **kwargs),
     )
+
     train_ds = TensorDataset(x_train, y_train)
     valid_ds = TensorDataset(x_valid, y_valid)
 
@@ -607,4 +723,5 @@ if __name__ == "__main__":
         scheduler,
         *get_data(train_ds, valid_ds, args.batch_size),
         visualizer,
+        accuracy=accuracy
     )

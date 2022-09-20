@@ -47,14 +47,13 @@
 #		mnist ../mnist
 #'
 
-python train.py --filter_size 7\
-    --out_dir test_tanh\
+../env_test/bin/python train.py --filter_size 5\
+    --out_dir out_classif\
     --epochs 1000\
     --gpu 0\
     --patience 10\
     --vis_freq 125\
-    models.smorphnet_double\
-    mse\
-    closing\
-    --sel doubledisk7_1\
-    mnist ../mnist
+    --op classif\
+    models.convnet_classif\
+    crossentropy\
+    fashion_mnist ../fashion-mnist

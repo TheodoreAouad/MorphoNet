@@ -27,11 +27,13 @@ ops = { 1: sop,
         2: dop }
 var_names = { "pconvnet": "p",
               "lmorphnet": "p",
-              "smorphnet": "alpha" }
+              "smorphnet": "alpha",
+              "convnet": ""}
 
 layer_names = { "pconvnet": "pconv",
                 "lmorphnet": "lm",
-                "smorphnet": "sm" }
+                "smorphnet": "sm",
+                "convnet": "conv"}
 
 plot_params = { "xticks": [],
                 "yticks": [] }

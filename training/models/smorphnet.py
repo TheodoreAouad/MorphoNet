@@ -8,6 +8,8 @@ from utils.scale_bias import ScaleBias
 MODEL_NAME = "smorphnet"
 
 class SMorphNet(nn.Module):
+    lmbda: nn.Parameter
+
     def __init__(self, filter_size, **kwargs):
         super(SMorphNet, self).__init__()
         self.sm1 = SMorph(1, 1, filter_size, **kwargs)
@@ -30,4 +32,3 @@ def get_model(model_args):
         opt,
         scheduler,
     )
-
