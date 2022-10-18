@@ -23,6 +23,7 @@ GT_NAME = "GT_SRGB_010"
 
 # TODO add way to split data from args
 # TODO with heavy data, dynamic loading needs to be implemented
+# TODO ensure data is loaded as float and in [0,1] before targets computation
 
 class DataModule(pl.LightningDataModule, metaclass=ABCMeta):
     def __init__(self, batch_size: int, dataset_path: str, precision: str, operation: Operation):
@@ -38,7 +39,7 @@ class DataModule(pl.LightningDataModule, metaclass=ABCMeta):
     def _input_transform(self):
         return torchvision.transforms.Compose(
             [
-                torchvision.transforms.ConvertImageDtype(self.torch_precision),  # already normalize image
+                torchvision.transforms.ConvertImageDtype(self.torch_precision),  # already scale image
                 # torchvision.transforms.Normalize(mean=[0.0], std=[255.0]),
                 torchvision.transforms.Lambda(lambda x: x[:, None, :, :]),
             ]

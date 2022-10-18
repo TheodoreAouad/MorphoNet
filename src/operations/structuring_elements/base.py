@@ -108,7 +108,6 @@ class Cross(StructuringElement):
     """Structuring Element with a cross shape."""
 
     def _draw(self, radius: int) -> np.ndarray:
-        print("in draw")
         res = np.zeros((radius, radius), dtype=self.dtype)
         res[radius // 2, :] = 1.0
         res[:, radius // 2] = 1.0

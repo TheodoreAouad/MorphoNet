@@ -35,13 +35,19 @@ logging.basicConfig(
 
 # TODO filter size seems to be alsways int, but could be set to tuple
 # TODO add param to change mlflow experiment
+# TODO for lmorph, as inputs are in the range [1;2], the output should also be
+# calculated from [1;2]: maybe harder to learn when starting in the wrong scale
+# TODO normalisation des données
+# TODO permettre de réduire la fréquence des print log (progress bar)
+# TODO tester avec nombre de workers plus élever
+# TODO check si les données sont bien en mémoire en permanance, peut-être la cause de la lenteur
 
 mlflow.pytorch.autolog()
 if __name__ == "__main__":
     with mlflow.start_run() as run, RunContext(run, output_managment):
         with Task("Parsing command line"):
             args = parser.parse_args()
-            device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+            # device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
         with Task("Logging parameters"):
             mlflow.log_params(vars(args))

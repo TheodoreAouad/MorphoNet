@@ -9,13 +9,10 @@ tags
 mnist
 fashion-mnist
 out*
-*png
 *log
 compressed
 standard
-*.npy
 run_dsmorph.sh
-test_*
 sidd
 mlruns
 lightning_logs

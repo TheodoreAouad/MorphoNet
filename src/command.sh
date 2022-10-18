@@ -49,11 +49,11 @@
 
 python train.py \
 		--filter_size 7\
-		--epochs 5\
+		--epochs 1000\
 		--gpu 0\
 		--patience 10\
 		--vis_freq 125\
-        --op dilation\
+        --op erosion\
 		--sel complex\
 		--loss mse\
 		smorphnet\
