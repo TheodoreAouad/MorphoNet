@@ -1,0 +1,49 @@
+[project]
+name = "Morphonet"
+version = "0.0.1"
+authors = [
+  { name="Hermary Romain", email="romain.hermary@lrde.epita.fr" },
+]
+description = "Implementation of morphological neural networks"
+readme = "README.md"
+requires-python = ">=3.7"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+[tool.pylint.master]
+init-hook = 'import os, sys; sys.path.append(".")'
+
+[tool.pylint.messages_control]
+disable = [
+    "too-many-ancestors",
+    "fixme",
+    "duplicate-code",
+]
+
+[tool.pylint.typecheck]
+generated-members = "numpy.*, torch.*"
+
+[tool.black]
+line-length = 80
+
+[tool.mypy]
+disallow_untyped_defs = true
+
+[[tool.mypy.overrides]]
+module = [
+    "mlflow",
+    "skimage",
+    "scipy.ndimage",
+]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+addopts = [
+    "--import-mode=importlib",
+]
+pythonpath = [
+  "src"
+]

@@ -1,0 +1,17 @@
+numpy
+tqdm
+matplotlib
+sklearn
+h5py
+scikit-image
+PyWavelets
+pytorch_ssim==0.1
+mlflow==1.29.0
+pytorch-lightning==1.7.6
+--extra-index-url https://download.pytorch.org/whl/cu113
+torch==1.12.1+cu113
+torchvision==0.13.1+cu113
+black==22.8.0
+pylint==2.15.3
+mypy==0.981
+pytest==7.1.3

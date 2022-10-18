@@ -16,3 +16,6 @@ standard
 *.npy
 run_dsmorph.sh
 test_*
+sidd
+mlruns
+lightning_logs

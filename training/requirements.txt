@@ -1,9 +1,0 @@
-torch
-numpy
-tqdm
-matplotlib
-sklearn
-h5py
-scikit-image
-PyWavelets
-torchvision
