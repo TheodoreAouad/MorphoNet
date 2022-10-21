@@ -3,7 +3,6 @@
 from abc import abstractmethod
 from typing import Dict, Any, List, Optional
 import numpy as np
-from sklearn import model_selection
 import pytorch_lightning as pl
 from abc import ABCMeta
 
@@ -15,8 +14,6 @@ from torch.utils.data import random_split, DataLoader
 from operations.base import Operation
 
 import inspect
-
-from skimage import io
 
 NOISY_NAME = "NOISY_SRGB_010"
 GT_NAME = "GT_SRGB_010"
@@ -40,7 +37,7 @@ class DataModule(pl.LightningDataModule, metaclass=ABCMeta):
         return torchvision.transforms.Compose(
             [
                 torchvision.transforms.ConvertImageDtype(self.torch_precision),  # already scale image
-                # torchvision.transforms.Normalize(mean=[0.0], std=[255.0]),
+                torchvision.transforms.Lambda(lambda x: (x - torch.mean(x)) / torch.std(x)),
                 torchvision.transforms.Lambda(lambda x: x[:, None, :, :]),
             ]
         )

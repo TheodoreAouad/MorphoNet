@@ -27,7 +27,6 @@ class SMorph(pl.LightningModule):
         self.pad_h = self.filter_shape[0] // 2
         self.pad_w = self.filter_shape[1] // 2
         self.pad = (self.pad_w, self.pad_w, self.pad_h, self.pad_h)
-        self.unfolder_ = nn.Unfold(kernel_size=self.filter_shape)
 
         # TODO try pin mem etc. for speed
         self.filter = nn.Parameter(
@@ -56,7 +55,8 @@ class SMorph(pl.LightningModule):
         # pylint: disable=arguments-differ
         input_padded = nn.functional.pad(batch, self.pad, mode=PAD_MODE)
 
-        unfolded = self.unfolder_(input_padded)
+        unfolder_ = nn.Unfold(kernel_size=self.filter_shape)
+        unfolded = unfolder_(input_padded)
 
         sum_ = unfolded.transpose(1, 2) + (
             torch.tanh(self.alpha) * self.filter.squeeze().ravel()

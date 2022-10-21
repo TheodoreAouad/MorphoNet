@@ -1,6 +1,5 @@
 """Root logic for trainings."""
 
-from lib2to3.pgen2.token import OP
 from misc.visualizer import VisualizerCallback
 from misc.context import OutputManagment
 
@@ -10,6 +9,7 @@ output_managment.set()
 import logging
 import mlflow.pytorch
 import os
+from pathlib import Path
 
 # Same device ordering as `nvidia-smi`
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
@@ -43,6 +43,7 @@ logging.basicConfig(
 # TODO check si les données sont bien en mémoire en permanance, peut-être la cause de la lenteur
 
 mlflow.pytorch.autolog()
+mlflow.set_tracking_uri(f"file://{Path(__file__).parents[1]}/mlruns")
 if __name__ == "__main__":
     with mlflow.start_run() as run, RunContext(run, output_managment):
         with Task("Parsing command line"):
