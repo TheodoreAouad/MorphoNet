@@ -1,7 +1,0 @@
-.vscode
-install.sh
-
-__pycache__
-.egg-info
-build
-dist
