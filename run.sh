@@ -1,4 +1,5 @@
-python src/train.py \
+export PYTHONPATH=src
+python -m tasks.train \
 		--filter_size 7\
 		--epochs 1000\
 		--gpu 0\
@@ -7,5 +8,6 @@ python src/train.py \
         --op erosion\
 		--sel complex\
 		--loss mse\
+		--experiment testdefou\
 		smorphnet\
-		mnist ./mnist
+		mnist ./data/mnist

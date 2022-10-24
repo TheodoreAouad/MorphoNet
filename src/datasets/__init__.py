@@ -1,3 +1,5 @@
+"""Init datasets module."""
+
 from .mnist import MNIST
 
 from .base import DataModule

@@ -39,15 +39,18 @@ exclude = [
   "__pycache__",
   "env",
 ]
-mypy_path = "./src"
+mypy_path = "./src/"
 namespace_packages = true
 explicit_package_bases = true
 
 [[tool.mypy.overrides]]
 module = [
     "mlflow",
+    "mlflow.pytorch",
     "skimage",
+    "scipy",
     "scipy.ndimage",
+    "torchvision",
 ]
 ignore_missing_imports = true
 

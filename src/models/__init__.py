@@ -1,3 +1,5 @@
+"""Init models module."""
+
 from .convnet import ConvNet
 from .smorphnet import SMorphNet
 from .lmorphnet import LMorphNet

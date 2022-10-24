@@ -86,7 +86,9 @@ class RunContext:
         pass
 
     def __exit__(self, *args: Any) -> None:
-        print(self.run.info.run_id)
+        print(
+            f"\n/#/experiments/{self.run.info.experiment_id}/runs/{self.run.info.run_id}/"
+        )
 
         sys.stdout.flush()
         sys.stderr.flush()

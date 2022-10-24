@@ -1,12 +1,12 @@
 """Base model with default optimizer, scheduler, and tracked metrics."""
 
 from abc import ABCMeta, abstractmethod
-from typing import Dict, Any, Callable, Tuple
+from typing import Optional, List, Dict, Any, Callable, Tuple
+import inspect
+
 from pytorch_lightning.utilities.types import STEP_OUTPUT
 import pytorch_lightning as pl
 import torch
-from typing import Optional, List
-import inspect
 
 
 VAL_LOSS = "val_loss"
@@ -73,20 +73,33 @@ class BaseNetwork(pl.LightningModule, metaclass=ABCMeta):
         return loss
 
     @classmethod
-    def select(cls, name: str, **kwargs: Any) -> Optional["BaseNetwork"]:
+    def select_(cls, name: str, **kwargs: Any) -> Optional["BaseNetwork"]:
         """
-        Class method iterating over all subclasses to instantiate the desired
-        model.
+        Recursive class method iterating over all subclasses to instantiate the
+        desired model.
         """
         if cls.__name__.lower() == name:
             return cls(**kwargs)
 
         for subclass in cls.__subclasses__():
-            instance = subclass.select(name, **kwargs)
+            instance = subclass.select_(name, **kwargs)
             if instance is not None:
                 return instance
 
         return None
+
+    @classmethod
+    def select(cls, name: str, **kwargs: Any) -> "BaseNetwork":
+        """
+        Class method iterating over all subclasses to instantiate the desired
+        model.
+        """
+
+        selected = cls.select_(name, **kwargs)
+        if selected is None:
+            raise Exception("The selected class was not found.")
+
+        return selected
 
     @classmethod
     def listing(cls) -> List[str]:
@@ -101,7 +114,7 @@ class BaseNetwork(pl.LightningModule, metaclass=ABCMeta):
         return list(subclasses)
 
     @abstractmethod
-    def forward(
+    def forward(  # pylint: disable=arguments-differ
         self, batch: torch.Tensor, *args: Any, **kwargs: Any
     ) -> torch.Tensor:
-        """"""
+        """Forward method of the network."""

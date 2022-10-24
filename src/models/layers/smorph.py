@@ -1,12 +1,12 @@
 """Layer implementing the SMorph function."""
 
-from typing import Union, Tuple, Any
+from typing import Any
 import torch
 from torch import nn
 import mlflow
 import pytorch_lightning as pl
 
-from .utils import make_pair, init_context, folded_normal_
+from .utils import init_context, folded_normal_
 
 # TODO shared param, alpha and/or filter
 PAD_MODE = "reflect"

@@ -1,31 +1,21 @@
 """Root logic for trainings."""
 
-from misc.visualizer import VisualizerCallback
-from misc.context import OutputManagment
-
-output_managment = OutputManagment()
-output_managment.set()
-
-import logging
-import mlflow.pytorch
-import os
 from pathlib import Path
-
-# Same device ordering as `nvidia-smi`
-os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+import logging
 
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 from pytorch_lightning import Trainer
-import torch
+import mlflow.pytorch
+import numpy as np
 
 from misc.context import RunContext, Task
-
-from misc.parser import parser, LOSSES, PRECISIONS_TORCH
+from misc.parser import parser, LOSSES
+from misc.visualizer import VisualizerCallback
 from datasets.base import DataModule
-from models.base import VAL_LOSS
+from models.base import VAL_LOSS, BaseNetwork
 from operations.base import Operation
 from operations.structuring_elements import StructuringElement
-from models.base import BaseNetwork
+from tasks import output_managment
 
 logging.basicConfig(
     level=logging.INFO,
@@ -43,30 +33,34 @@ logging.basicConfig(
 # TODO check si les données sont bien en mémoire en permanance, peut-être la cause de la lenteur
 
 mlflow.pytorch.autolog()
-mlflow.set_tracking_uri(f"file://{Path(__file__).parents[1]}/mlruns")
+mlflow.set_tracking_uri(f"file://{Path(__file__).parents[2]}/mlruns")
 if __name__ == "__main__":
-    with mlflow.start_run() as run, RunContext(run, output_managment):
-        with Task("Parsing command line"):
-            args = parser.parse_args()
-            # device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    with Task("Parsing command line"):
+        args = parser.parse_args()
+        # device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        mlflow.set_experiment(args.experiment)
 
+    with mlflow.start_run() as run, RunContext(run, output_managment):
         with Task("Logging parameters"):
             mlflow.log_params(vars(args))
 
         with Task("Loading structuring element"):
-            structuring_element = StructuringElement.select(
+            structuring_element_class = StructuringElement.select(
                 name=args.structuring_element,
                 filter_size=args.filter_size,
                 precision=args.precision,
             )
 
-            if structuring_element == None:
+            if structuring_element_class is None:
                 logging.info("No matching structuring element found")
+                structuring_element = np.empty(0)
+            else:
+                structuring_element = structuring_element_class()
 
         with Task("Loading operation"):
             operation = Operation.select(
                 name=args.operation,
-                structuring_element=structuring_element(),
+                structuring_element=structuring_element,
                 percentage=args.percentage,
             )
 
@@ -91,9 +85,7 @@ if __name__ == "__main__":
                 operation=operation,
             )
 
-        visualizer = VisualizerCallback(
-            run, structuring_element(), args.vis_freq
-        )
+        visualizer = VisualizerCallback(run, structuring_element, args.vis_freq)
         early_stop_callback = EarlyStopping(
             monitor=VAL_LOSS,
             min_delta=0.00,

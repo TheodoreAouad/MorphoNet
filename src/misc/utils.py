@@ -1,3 +1,5 @@
+"""Utility functions."""
+
 from torch.utils.data import DataLoader
 import torch
 import numpy as np
@@ -7,6 +9,7 @@ PRECISIONS_TORCH = {"f32": torch.float32, "f64": torch.float64}
 PRECISIONS_NP = {"f32": "float32", "f64": "float64"}
 
 # TODO do something with this file
+# pylint: disable=all
 
 
 def split_arg(value, mapper=lambda a: a):  # type: ignore

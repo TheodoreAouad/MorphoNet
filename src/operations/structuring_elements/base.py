@@ -1,14 +1,14 @@
 """Base abstract classes to construct structuring elements."""
 
 from abc import abstractmethod, ABCMeta
-from typing import Tuple, Optional, Any, List
+from typing import Optional, Any, List
 import inspect
 
 from skimage import morphology
 import numpy as np
 
 from misc.utils import PRECISIONS_NP
-from .utils import center_in, shape_aa
+from .utils import shape_aa
 
 #  pylint: disable=abstract-method
 
@@ -122,6 +122,6 @@ class Cross(StructuringElement):
 class DoubleDisk9(Diskaa, Diamond):
     """Structuring Element with a double disk shape."""
 
-    def __init__(self, filter_shape: Tuple[int, int], precision: str) -> None:
-        super().__init__(filter_shape, precision)
+    def __init__(self, filter_size: int, precision: str) -> None:
+        super().__init__(filter_size, precision)
         self.filter_shape = (9, 9)

@@ -1,19 +1,18 @@
 """Loaders for the supported datasets."""
 
-from abc import abstractmethod
-from typing import Dict, Any, List, Optional
-import numpy as np
-import pytorch_lightning as pl
-from abc import ABCMeta
+from abc import abstractmethod, ABCMeta
+from typing import Any, List, Optional, Tuple, Callable
 
-from misc.utils import PRECISIONS_NP, PRECISIONS_TORCH, split_arg, make_patches
+import inspect
+import pytorch_lightning as pl
 
 import torchvision
 import torch
-from torch.utils.data import random_split, DataLoader
+from torch.utils.data import DataLoader
+
+from misc.utils import PRECISIONS_NP, PRECISIONS_TORCH
 from operations.base import Operation
 
-import inspect
 
 NOISY_NAME = "NOISY_SRGB_010"
 GT_NAME = "GT_SRGB_010"
@@ -23,7 +22,23 @@ GT_NAME = "GT_SRGB_010"
 # TODO ensure data is loaded as float and in [0,1] before targets computation
 
 
+class Dataset(torch.utils.data.Dataset):
+    """Implementation of torch.utils.Data.Dataset abstract class."""
+
+    def __init__(self, inputs: torch.Tensor, targets: torch.Tensor) -> None:
+        self.inputs = inputs
+        self.targets = targets
+
+    def __len__(self) -> int:
+        return self.inputs.shape[0]
+
+    def __getitem__(self, index: int) -> Tuple[torch.Tensor, torch.Tensor]:
+        return self.inputs[index, :], self.targets[index, :]
+
+
 class DataModule(pl.LightningDataModule, metaclass=ABCMeta):
+    """Base abstract class for datasets."""
+
     def __init__(
         self,
         batch_size: int,
@@ -40,7 +55,10 @@ class DataModule(pl.LightningDataModule, metaclass=ABCMeta):
         self.input_transform = self._input_transform()
         self.target_transform = self._target_transform(operation)
 
-    def _input_transform(self):
+        self.train_dataset: Dataset
+        self.val_dataset: Dataset
+
+    def _input_transform(self) -> torchvision.transforms.Compose:
         return torchvision.transforms.Compose(
             [
                 torchvision.transforms.ConvertImageDtype(
@@ -53,24 +71,25 @@ class DataModule(pl.LightningDataModule, metaclass=ABCMeta):
             ]
         )
 
-    def _target_transform(self, operation):
+    def _target_transform(self, operation: Operation) -> Callable:
         return lambda inputs, targets: torch.from_numpy(
             operation(inputs.numpy(), targets.numpy())
         ).to(self.torch_precision)
 
     @property
-    def sample(self):
+    def sample(self) -> Tuple[torch.Tensor, torch.Tensor]:
+        """Return a sample of the dataset."""
         # TODO change method when shuffling to always have same data
         return self.val_dataset.inputs[:10], self.val_dataset.targets[:10]
 
-    def prepare_data(self):
+    def prepare_data(self) -> None:
         pass
 
     @abstractmethod
-    def setup(self, stage: Optional[str] = None):
+    def setup(self, stage: Optional[str] = None) -> None:
         pass
 
-    def _create_dataloader(self, dataset):
+    def _create_dataloader(self, dataset: Dataset) -> DataLoader:
         return DataLoader(
             dataset,
             batch_size=self.batch_size,
@@ -79,18 +98,18 @@ class DataModule(pl.LightningDataModule, metaclass=ABCMeta):
             persistent_workers=True,
         )
 
-    def train_dataloader(self):
+    def train_dataloader(self) -> DataLoader:
         return self._create_dataloader(
             self.train_dataset,
         )
 
-    def val_dataloader(self):
+    def val_dataloader(self) -> DataLoader:
         return self._create_dataloader(
             self.val_dataset,
         )
 
-    def test_dataloader(self):
-        return None
+    def test_dataloader(self) -> DataLoader:
+        return DataLoader(Dataset(torch.empty(0), torch.empty(0)))
 
     @classmethod
     def select(cls, name: str, **kwargs: Any) -> Optional["DataModule"]:
@@ -120,18 +139,7 @@ class DataModule(pl.LightningDataModule, metaclass=ABCMeta):
         return list(subclasses)
 
 
-class Dataset(torch.utils.data.Dataset):
-    def __init__(self, inputs, targets) -> None:
-        self.inputs = inputs
-        self.targets = targets
-
-    def __len__(self):
-        return self.inputs.shape[0]
-
-    def __getitem__(self, index):
-        return self.inputs[index, :], self.targets[index, :]
-
-
+# pylint: disable=all
 """
 class FMNISTDataset(Dataset):
     def __init__(self, precision, dataset_path, train=False, **kwargs):

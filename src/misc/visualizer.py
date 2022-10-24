@@ -36,6 +36,8 @@ class VisualizerCallback(Callback):
 
         os.mkdir(f"{self.artifact_path}/{BASE_DIR}")
 
+        self.inputs: torch.Tensor
+
     def setup(
         self,
         trainer: pl.Trainer,
@@ -43,12 +45,12 @@ class VisualizerCallback(Callback):
         stage: Optional[str] = None,
     ) -> None:
         self.inputs = (
-            trainer.datamodule.sample[0]
+            trainer.datamodule.sample[0]  # type: ignore
             .detach()
             .clone()
             .to(trainer.strategy.root_device)
         )
-        targets = trainer.datamodule.sample[1].detach().clone().to("cpu")
+        targets = trainer.datamodule.sample[1].detach().clone().to("cpu")  # type: ignore
 
         # TODO finish implem meta file
         with open(self.artifact_format("meta"), "wb") as meta_file:
