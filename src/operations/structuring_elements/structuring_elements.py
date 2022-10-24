@@ -56,7 +56,9 @@ class Complex(Diskaa, Diamondaa):
     """Construct a complex shape."""
 
     def __call__(self) -> np.ndarray:
-        return self.center_in(Diskaa._draw(self, 3)) - self.center_in(Diamondaa._draw(self, 2))
+        return self.center_in(Diskaa._draw(self, 3)) - self.center_in(
+            Diamondaa._draw(self, 2)
+        )
 
 
 class Cross3(Cross):
@@ -131,7 +133,9 @@ class DoubleDisk92(DoubleDisk9):
 
     def __call__(self) -> np.ndarray:
         return (
-            self.center_in(Diskaa._draw(self, 4)) - self.center_in(Diskaa._draw(self, 3)) > 0.5
+            self.center_in(Diskaa._draw(self, 4))
+            - self.center_in(Diskaa._draw(self, 3))
+            > 0.5
         ) + self.center_in(Diamond._draw(self, 2))
 
 
@@ -140,7 +144,9 @@ class DoubleDisk91(DoubleDisk9):
 
     def __call__(self) -> np.ndarray:
         return (
-            self.center_in(Diskaa._draw(self, 4)) - self.center_in(Diskaa._draw(self, 3)) > 0.5
+            self.center_in(Diskaa._draw(self, 4))
+            - self.center_in(Diskaa._draw(self, 3))
+            > 0.5
         ) + self.center_in(Diamond._draw(self, 1))
 
 
@@ -149,7 +155,11 @@ class DoubleDisk70(Diskaa):
 
     def __call__(self) -> np.ndarray:
         self.filter_shape = (7, 7)
-        return self.center_in(Diskaa._draw(self, 3)) - self.center_in(Diskaa._draw(self, 2)) > 0.5
+        return (
+            self.center_in(Diskaa._draw(self, 3))
+            - self.center_in(Diskaa._draw(self, 2))
+            > 0.5
+        )
 
 
 class DoubleDisk71(Diskaa, Disk):
@@ -157,7 +167,9 @@ class DoubleDisk71(Diskaa, Disk):
 
     def __call__(self) -> np.ndarray:
         return (
-            self.center_in(Diskaa._draw(self, 3)) - self.center_in(Diskaa._draw(self, 2)) > 0.5
+            self.center_in(Diskaa._draw(self, 3))
+            - self.center_in(Diskaa._draw(self, 2))
+            > 0.5
         ) + self.center_in(Disk._draw(self, 0))
 
 

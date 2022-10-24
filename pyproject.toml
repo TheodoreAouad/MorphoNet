@@ -14,7 +14,11 @@ classifiers = [
 ]
 
 [tool.pylint.master]
-init-hook = 'import os, sys; sys.path.append(".")'
+init-hook = 'import os, sys; sys.path.append("./src")'
+ignore = [
+  "__pycache__",
+  "env",
+]
 
 [tool.pylint.messages_control]
 disable = [
@@ -31,6 +35,13 @@ line-length = 80
 
 [tool.mypy]
 disallow_untyped_defs = true
+exclude = [
+  "__pycache__",
+  "env",
+]
+mypy_path = "./src"
+namespace_packages = true
+explicit_package_bases = true
 
 [[tool.mypy.overrides]]
 module = [

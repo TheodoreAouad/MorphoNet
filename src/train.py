@@ -57,9 +57,9 @@ if __name__ == "__main__":
             structuring_element = StructuringElement.select(
                 name=args.structuring_element,
                 filter_size=args.filter_size,
-                precision=args.precision
+                precision=args.precision,
             )
-            
+
             if structuring_element == None:
                 logging.info("No matching structuring element found")
 
@@ -67,7 +67,7 @@ if __name__ == "__main__":
             operation = Operation.select(
                 name=args.operation,
                 structuring_element=structuring_element(),
-                percentage=args.percentage
+                percentage=args.percentage,
             )
 
         # TODO model should have available keys in args
@@ -76,7 +76,7 @@ if __name__ == "__main__":
                 name=args.model,
                 filter_size=args.filter_size,
                 loss_function=LOSSES[args.loss](),
-                #device=device,
+                # device=device,
             )
 
         # Accuracy of best val loss comparison
@@ -91,13 +91,15 @@ if __name__ == "__main__":
                 operation=operation,
             )
 
-        visualizer = VisualizerCallback(run, structuring_element(), args.vis_freq)
+        visualizer = VisualizerCallback(
+            run, structuring_element(), args.vis_freq
+        )
         early_stop_callback = EarlyStopping(
             monitor=VAL_LOSS,
             min_delta=0.00,
             patience=args.patience,
             verbose=False,
-            mode="min", # TODO change for classif
+            mode="min",  # TODO change for classif
         )
 
         trainer = Trainer(

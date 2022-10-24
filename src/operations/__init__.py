@@ -18,4 +18,5 @@ from .noise import (
     SaltPepper,
 )
 from .base import Operation
+
 OPS = Operation.listing()

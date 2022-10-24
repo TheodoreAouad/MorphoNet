@@ -56,14 +56,18 @@ class StructuringElement(metaclass=ABCMeta):
 
         return list(subclasses)
 
-    def center_in(self,
+    def center_in(
+        self,
         center: np.ndarray,
     ) -> np.ndarray:
         """Pad the computed center form to match the desired filter shape."""
         pad_before = (self.filter_shape[0] - center.shape[0]) // 2, (
             self.filter_shape[1] - center.shape[1]
         ) // 2
-        pad_after = self.filter_shape[0] - pad_before[0], self.filter_shape[1] - pad_before[1]
+        pad_after = (
+            self.filter_shape[0] - pad_before[0],
+            self.filter_shape[1] - pad_before[1],
+        )
 
         centered = np.zeros(shape=self.filter_shape, dtype=self.dtype)
         centered[
@@ -71,6 +75,7 @@ class StructuringElement(metaclass=ABCMeta):
         ] = center
 
         return centered
+
 
 class Disk(StructuringElement):
     """Structuring Element with a disk shape."""

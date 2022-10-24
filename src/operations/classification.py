@@ -4,8 +4,10 @@ import numpy as np
 
 from .base import Operation
 
+
 class Classification(Operation):
     """Class containing preprocessing for classification."""
+
     def __call__(self, inputs: np.ndarray, targets: np.ndarray) -> np.ndarray:
         idx = np.arange(inputs.shape[0]) * 10 + targets
         targets = np.zeros(inputs.shape[0] * 10)

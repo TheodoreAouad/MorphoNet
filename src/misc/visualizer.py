@@ -13,6 +13,7 @@ from mlflow import ActiveRun
 
 BASE_DIR = "outputs"
 
+
 class VisualizerCallback(Callback):
     """Callback in charge of logging during training."""
 
@@ -35,13 +36,20 @@ class VisualizerCallback(Callback):
 
         os.mkdir(f"{self.artifact_path}/{BASE_DIR}")
 
-    
-    def setup(self, trainer: pl.Trainer, pl_module: pl.LightningModule, stage: Optional[str] = None) -> None:
-        self.inputs = trainer.datamodule.sample[0].detach().clone().to(
-            trainer.strategy.root_device
+    def setup(
+        self,
+        trainer: pl.Trainer,
+        pl_module: pl.LightningModule,
+        stage: Optional[str] = None,
+    ) -> None:
+        self.inputs = (
+            trainer.datamodule.sample[0]
+            .detach()
+            .clone()
+            .to(trainer.strategy.root_device)
         )
         targets = trainer.datamodule.sample[1].detach().clone().to("cpu")
-        
+
         # TODO finish implem meta file
         with open(self.artifact_format("meta"), "wb") as meta_file:
             pickle.dump(

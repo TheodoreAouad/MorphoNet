@@ -105,4 +105,3 @@ class BaseNetwork(pl.LightningModule, metaclass=ABCMeta):
         self, batch: torch.Tensor, *args: Any, **kwargs: Any
     ) -> torch.Tensor:
         """"""
-        

@@ -8,19 +8,21 @@ PRECISIONS_NP = {"f32": "float32", "f64": "float64"}
 
 # TODO do something with this file
 
+
 def split_arg(value, mapper=lambda a: a):  # type: ignore
     if value is None:
         return None
     return [mapper(v) for v in value.split(",")]
-    
-def get_data(train_ds, valid_ds, bs): # type: ignore
+
+
+def get_data(train_ds, valid_ds, bs):  # type: ignore
     return (
         DataLoader(train_ds, batch_size=bs, shuffle=True),
         DataLoader(valid_ds, batch_size=bs * 2),
     )
 
 
-def pad_inputs(x, model_name, filter_padding, pad_value=0): # type: ignore
+def pad_inputs(x, model_name, filter_padding, pad_value=0):  # type: ignore
     if "double" in model_name:
         filter_padding *= 2
     elif "five" in model_name:
@@ -37,13 +39,13 @@ def pad_inputs(x, model_name, filter_padding, pad_value=0): # type: ignore
             (filter_padding, filter_padding),
         ),
         mode="constant",
-        constant_values=(pad_value,)
+        constant_values=(pad_value,),
     )
 
     return padded
-    
 
-def make_patches(data_shape, patch_shape): # type: ignore
+
+def make_patches(data_shape, patch_shape):  # type: ignore
     patch_shape = np.array(patch_shape)
     data_shape = np.array(data_shape)
     n_patches = np.ceil(data_shape / patch_shape)
@@ -58,7 +60,7 @@ def make_patches(data_shape, patch_shape): # type: ignore
     ]
 
 
-def reconstruct_patches(data_patches, patches, data_shape): # type: ignore
+def reconstruct_patches(data_patches, patches, data_shape):  # type: ignore
     data = np.zeros(data_shape, dtype=data_patches.dtype)
     count = np.zeros(data_shape, dtype=data_patches.dtype)
     for data_patch, patch in zip(data_patches, patches):

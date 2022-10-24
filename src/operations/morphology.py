@@ -5,7 +5,8 @@ import numpy as np
 
 from .base import MorphologicalOperation
 
-#TODO pad mode must be explicitely the same as for model inputs
+# TODO pad mode must be explicitely the same as for model inputs
+
 
 class Dilation(MorphologicalOperation):
     """Do a dilation on the image."""

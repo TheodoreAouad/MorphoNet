@@ -7,7 +7,6 @@ import inspect
 import numpy as np
 
 
-
 class Operation(metaclass=ABCMeta):
     """Abstract class stating required methods for operations."""
 

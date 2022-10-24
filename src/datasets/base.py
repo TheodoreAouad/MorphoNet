@@ -22,8 +22,15 @@ GT_NAME = "GT_SRGB_010"
 # TODO with heavy data, dynamic loading needs to be implemented
 # TODO ensure data is loaded as float and in [0,1] before targets computation
 
+
 class DataModule(pl.LightningDataModule, metaclass=ABCMeta):
-    def __init__(self, batch_size: int, dataset_path: str, precision: str, operation: Operation):
+    def __init__(
+        self,
+        batch_size: int,
+        dataset_path: str,
+        precision: str,
+        operation: Operation,
+    ):
         super().__init__()
         self.batch_size = batch_size
         self.dataset_path = dataset_path
@@ -36,8 +43,12 @@ class DataModule(pl.LightningDataModule, metaclass=ABCMeta):
     def _input_transform(self):
         return torchvision.transforms.Compose(
             [
-                torchvision.transforms.ConvertImageDtype(self.torch_precision),  # already scale image
-                torchvision.transforms.Lambda(lambda x: (x - torch.mean(x)) / torch.std(x)),
+                torchvision.transforms.ConvertImageDtype(
+                    self.torch_precision
+                ),  # already scale image
+                torchvision.transforms.Lambda(
+                    lambda x: (x - torch.mean(x)) / torch.std(x)
+                ),
                 torchvision.transforms.Lambda(lambda x: x[:, None, :, :]),
             ]
         )
@@ -81,7 +92,6 @@ class DataModule(pl.LightningDataModule, metaclass=ABCMeta):
     def test_dataloader(self):
         return None
 
-    
     @classmethod
     def select(cls, name: str, **kwargs: Any) -> Optional["DataModule"]:
         """
@@ -109,6 +119,7 @@ class DataModule(pl.LightningDataModule, metaclass=ABCMeta):
 
         return list(subclasses)
 
+
 class Dataset(torch.utils.data.Dataset):
     def __init__(self, inputs, targets) -> None:
         self.inputs = inputs
@@ -119,6 +130,7 @@ class Dataset(torch.utils.data.Dataset):
 
     def __getitem__(self, index):
         return self.inputs[index, :], self.targets[index, :]
+
 
 """
 class FMNISTDataset(Dataset):

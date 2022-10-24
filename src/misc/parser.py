@@ -10,17 +10,22 @@ from misc.utils import PRECISIONS_TORCH
 parser = argparse.ArgumentParser(description="Train a model.")
 parser.add_argument("model", help="model to load")
 parser.add_argument(
-    "--loss", choices=LOSSES.keys(), help="loss to use", default="mse")
+    "--loss", choices=LOSSES.keys(), help="loss to use", default="mse"
+)
 
 parser.add_argument(
-    "--op", default=None, choices=OPS, help="operation to perform", dest="operation"
+    "--op",
+    default=None,
+    choices=OPS,
+    help="operation to perform",
+    dest="operation",
 )
 parser.add_argument(
     "--sel",
     choices=STRUCTURING_ELEMENTS,
     help="structuring element to use",
     default="",
-    dest="structuring_element"
+    dest="structuring_element",
 )
 parser.add_argument(
     "--filter_size",
@@ -61,6 +66,12 @@ parser.add_argument(
     type=int,
     default=32,
     help="how often to save layers outputs and weights (in batches)",
+)
+parser.add_argument(
+    "--experiment",
+    type=str,
+    default="Default",
+    help="Name of the MLflow experiment",
 )
 
 subparsers = parser.add_subparsers(help="Dataset to train on", dest="dataset")
