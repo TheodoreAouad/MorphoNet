@@ -58,6 +58,29 @@ class SMorph(pl.LightningModule):
         unfolder_ = nn.Unfold(kernel_size=self.filter_shape)
         unfolded = unfolder_(input_padded)
 
+        sum_ = unfolded.transpose(1, 2) + self.filter.squeeze().ravel()
+        sum_alpha = self.alpha.squeeze() * sum_
+        exp_sum_alpha = sum_alpha.exp()
+        sum_exp_sum_alpha = sum_ * exp_sum_alpha
+
+        result = sum_exp_sum_alpha.sum(2) / exp_sum_alpha.sum(2)
+
+        return result.view(*batch.size())
+
+
+class SMorphTanh(SMorph):
+    """Module implementing the SMorph function with tanh modification."""
+
+    # TODO test fold, unfold, function results shapes
+    def forward(
+        self, batch: torch.Tensor, *args: Any, **kwargs: Any
+    ) -> torch.Tensor:
+        # pylint: disable=arguments-differ
+        input_padded = nn.functional.pad(batch, self.pad, mode=PAD_MODE)
+
+        unfolder_ = nn.Unfold(kernel_size=self.filter_shape)
+        unfolded = unfolder_(input_padded)
+
         sum_ = unfolded.transpose(1, 2) + (
             torch.tanh(self.alpha) * self.filter.squeeze().ravel()
         )
