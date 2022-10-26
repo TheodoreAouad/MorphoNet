@@ -35,8 +35,8 @@ def get_visfile_path(run: Run) -> str:
 def get_keys(path: str) -> None:
     """Returns available keys in pickle file."""
     path = get_true_path(path)
-    with open(path, "rb") as f:
-        out = pickle.load(f)
+    with open(path, "rb") as visfile:
+        out = pickle.load(visfile)
         print(out.keys())
 
 
@@ -264,8 +264,8 @@ def ploting(  # pylint: disable=too-many-locals,too-many-arguments,unused-argume
                     )
                     run = filtered[iteration]
 
-                    with open(get_visfile_path(run), "rb") as f:
-                        saved_data = pickle.load(f)
+                    with open(get_visfile_path(run), "rb") as visfile:
+                        saved_data = pickle.load(visfile)
                         axis = axes[1 + idx_m * len(operations) + idx_o, idx_s]
                         divider = make_axes_locatable(axis)
                         first_layer = True
