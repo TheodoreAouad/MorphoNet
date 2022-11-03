@@ -1,0 +1,42 @@
+"""Base layer essentially to declare plots functions."""
+
+from typing import Optional, Tuple
+from matplotlib.axes._axes import Axes
+from matplotlib.figure import Figure
+
+import matplotlib.pyplot as plt
+import pytorch_lightning as pl
+
+
+class BaseLayer(pl.LightningModule):
+    """Base layer containing code shared by all layers."""
+
+    def plot_(
+        self, axis: Axes, cmap: str = "plasma", comments: Optional[str] = None
+    ) -> Axes:
+        """
+        Method specific to each layer that plots its visualization.
+        """
+        raise NotImplementedError
+
+    def plot(
+        self,
+        figure: Optional[Tuple[Figure, Axes]] = None,
+        cmap: str = "plasma",
+        path: Optional[str] = None,
+        comments: Optional[str] = None,
+    ) -> None:
+        """
+        Function calling implemented `plot_` method while managing figure and
+        plot saving.
+        """
+        if figure is None:
+            fig, axis = plt.subplots(1, 1, figsize=(6, 6))
+        else:
+            fig, axis = figure
+
+        self.plot_(axis, cmap, comments)
+
+        if path is not None:
+            fig.savefig(path)
+            plt.close(fig)

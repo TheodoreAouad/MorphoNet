@@ -45,40 +45,37 @@ class DataModule(pl.LightningDataModule, metaclass=ABCMeta):
         dataset_path: str,
         precision: str,
         operation: Operation,
-    ):
+    ) -> None:
         super().__init__()
         self.batch_size = batch_size
         self.dataset_path = dataset_path
         self.torch_precision = PRECISIONS_TORCH[precision]
         self.np_precision = PRECISIONS_NP[precision]
-
-        self.input_transform = self._input_transform()
-        self.target_transform = self._target_transform(operation)
+        self.num_workers = 8
+        self.operation = operation
 
         self.train_dataset: Dataset
         self.val_dataset: Dataset
 
-    def _input_transform(self) -> torchvision.transforms.Compose:
-        return torchvision.transforms.Compose(
-            [
-                torchvision.transforms.ConvertImageDtype(
-                    self.torch_precision
-                ),  # already scale image
-                torchvision.transforms.Lambda(
-                    lambda x: (x - torch.mean(x)) / torch.std(x)
-                ),
-                torchvision.transforms.Lambda(lambda x: x[:, None, :, :]),
-            ]
+    def scale(self, tensor: torch.Tensor) -> torch.Tensor:
+        return torchvision.transforms.ConvertImageDtype(self.torch_precision)(
+            tensor
         )
 
-    def _target_transform(self, operation: Operation) -> Callable:
-        return lambda inputs, targets: torch.from_numpy(
-            operation(inputs.numpy(), targets.numpy())
-        ).to(self.torch_precision)
+    def normalize(self, tensor: torch.Tensor) -> torch.Tensor:
+        return torchvision.transforms.Lambda(
+            lambda x: (x - torch.mean(x)) / torch.std(x)
+        )(tensor)
+
+    def remodel_data(
+        self, inputs: torch.Tensor, targets: torch.Tensor
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        inputs, targets = self.operation(inputs, targets)
+        return inputs.to(self.torch_precision), targets.to(self.torch_precision)
 
     @property
     def sample(self) -> Tuple[torch.Tensor, torch.Tensor]:
-        """Return a sample of the dataset."""
+        """Return a sample of the validation dataset."""
         # TODO change method when shuffling to always have same data
         return self.val_dataset.inputs[:10], self.val_dataset.targets[:10]
 
@@ -89,30 +86,33 @@ class DataModule(pl.LightningDataModule, metaclass=ABCMeta):
     def setup(self, stage: Optional[str] = None) -> None:
         pass
 
-    def _create_dataloader(self, dataset: Dataset) -> DataLoader:
+    def _create_dataloader(self, dataset: Dataset, shuffle: bool) -> DataLoader:
         return DataLoader(
             dataset,
             batch_size=self.batch_size,
-            num_workers=1,
+            shuffle=shuffle,
+            num_workers=self.num_workers,
             pin_memory=True,
             persistent_workers=True,
         )
 
     def train_dataloader(self) -> DataLoader:
         return self._create_dataloader(
-            self.train_dataset,
+            dataset=self.train_dataset,
+            shuffle=True,
         )
 
     def val_dataloader(self) -> DataLoader:
         return self._create_dataloader(
-            self.val_dataset,
+            dataset=self.val_dataset,
+            shuffle=False,
         )
 
     def test_dataloader(self) -> DataLoader:
         return DataLoader(Dataset(torch.empty(0), torch.empty(0)))
 
     @classmethod
-    def select(cls, name: str, **kwargs: Any) -> Optional["DataModule"]:
+    def select_(cls, name: str, **kwargs: Any) -> Optional["DataModule"]:
         """
         Class method iterating over all subclasses to load the desired dataset.
         """
@@ -120,11 +120,24 @@ class DataModule(pl.LightningDataModule, metaclass=ABCMeta):
             return cls(**kwargs)
 
         for subclass in cls.__subclasses__():
-            instance = subclass.select(name, **kwargs)
+            instance = subclass.select_(name, **kwargs)
             if instance is not None:
                 return instance
 
         return None
+
+    @classmethod
+    def select(cls, name: str, **kwargs: Any) -> "DataModule":
+        """
+        Class method iterating over all subclasses to instantiate the desired
+        data module.
+        """
+
+        selected = cls.select_(name, **kwargs)
+        if selected is None:
+            raise Exception("The selected dataset was not found.")
+
+        return selected
 
     @classmethod
     def listing(cls) -> List[str]:

@@ -1,6 +1,6 @@
 """One layer network with PConv function."""
 
-from typing import Union, Tuple, Callable, Any
+from typing import Callable, Any
 import torch
 
 from .base import BaseNetwork
@@ -13,11 +13,19 @@ class PConvNet(BaseNetwork):
 
     def __init__(
         self,
-        filter_size: Union[int, Tuple[int, int]],
+        filter_size: int,
         loss_function: Callable,
         **kwargs: Any,
     ):
         super().__init__(loss_function=loss_function)
+        self._set_hparams(
+            {
+                "filter_size": filter_size,
+                "loss_function": loss_function,
+                **kwargs,
+            }
+        )
+
         self.pconv1 = PConv(
             in_channels=1, out_channels=1, filter_size=filter_size, **kwargs
         )

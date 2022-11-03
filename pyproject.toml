@@ -25,6 +25,7 @@ disable = [
     "too-many-ancestors",
     "fixme",
     "duplicate-code",
+    "line-too-long",
 ]
 
 [tool.pylint.typecheck]
@@ -47,10 +48,16 @@ explicit_package_bases = true
 module = [
     "mlflow",
     "mlflow.pytorch",
+    "mlflow.entities",
     "skimage",
     "scipy",
     "scipy.ndimage",
     "torchvision",
+    "matplotlib",
+    "matplotlib.axes._axes",
+    "matplotlib.figure",
+    "matplotlib.pyplot",
+    "mpl_toolkits.axes_grid1",
 ]
 ignore_missing_imports = true
 

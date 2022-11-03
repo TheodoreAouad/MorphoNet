@@ -1,11 +1,14 @@
 """Layer implementing the LMorph function."""
 
-from typing import Any, Union, Tuple
+from typing import Any, Union, Tuple, Optional
 from torch import nn
 import torch
-import pytorch_lightning as pl
+import matplotlib.pyplot as plt
+from matplotlib.axes._axes import Axes
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 from .utils import make_pair, init_context, folded_normal_
+from .base import BaseLayer
 
 PAD_MODE = "reflect"
 
@@ -13,7 +16,7 @@ PAD_MODE = "reflect"
 # TODO check if filter is well clamped at the right time
 
 
-class LMorph(pl.LightningModule):
+class LMorph(BaseLayer):
     """Module implementing the LMorph function."""
 
     def __init__(
@@ -59,4 +62,37 @@ class LMorph(pl.LightningModule):
         imax = input_padded.max().detach()
         input_padded = 1.0 + (input_padded - imin) / (imax - imin)
 
-        raise Exception("Not implemented")
+        unfolder_ = nn.Unfold(kernel_size=self.filter_shape)
+        unfolded = unfolder_(input_padded)
+
+        sum_ = unfolded.transpose(1, 2) + self.filter.squeeze().ravel()
+        pow1 = sum_.pow(self.p + 1)
+        pow2 = sum_.pow(self.p)
+
+        result = pow1.sum(2) / pow2.sum(2)
+
+        return result.view(*batch.size()) - 1.0
+
+    def plot_(
+        self, axis: Axes, cmap: str = "plasma", comments: Optional[str] = None
+    ) -> Axes:
+        p = self.p.squeeze().detach().cpu()  # pylint: disable=invalid-name
+        if p < 0:
+            cmap = "plasma_r"
+
+        axis.invert_yaxis()
+        axis.get_yaxis().set_ticks([])
+        axis.get_xaxis().set_ticks([])
+        axis.set_box_aspect(1)
+
+        plot = axis.pcolormesh(self.filter.squeeze().detach().cpu(), cmap=cmap)
+        divider = make_axes_locatable(axis)
+        clb_ax = divider.append_axes("right", size="5%", pad=0.05)
+        clb_ax.set_box_aspect(15)
+        plt.colorbar(plot, cax=clb_ax)
+
+        axis.set_title(r"$p$: " + f"{p:.3f}", fontsize=20)
+        if comments is not None:
+            axis.set_xlabel(comments, fontsize=20)
+
+        return axis

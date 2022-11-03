@@ -1,6 +1,7 @@
 """Module allowing the visualization of the training details."""
 
-from typing import Any, Optional
+from typing import Any, Optional, Union, Type
+from contextlib import redirect_stdout
 import pickle
 import os
 import torch
@@ -8,13 +9,25 @@ import numpy as np
 
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import Callback
+from pytorch_lightning.strategies.deepspeed import DeepSpeedStrategy
+from pytorch_lightning.utilities.model_summary import (
+    DeepSpeedSummary,
+    ModelSummary,
+    summarize,
+)
+from pytorch_lightning.utilities.model_summary.model_summary import (
+    _format_summary_table,
+)
+
 from mlflow.utils.file_utils import local_file_uri_to_path  # type: ignore
 from mlflow import ActiveRun
 
 BASE_DIR = "outputs"
 
 
-class VisualizerCallback(Callback):
+class VisualizerCallback(
+    Callback
+):  # pylint: disable=too-many-instance-attributes
     """Callback in charge of logging during training."""
 
     def __init__(
@@ -28,13 +41,21 @@ class VisualizerCallback(Callback):
         self.current_batch = 0
         self.saved_batch = 0
         self.structuring_element = structuring_element
+        self._max_depth = 1
 
         self.artifact_path = local_file_uri_to_path(run.info.artifact_uri)
-        self.artifact_format = (
+        self.artifact_format_pickle = (
             f"{self.artifact_path}/{BASE_DIR}/{{}}.pickle".format
         )
+        self.artifact_format_ckpt = (
+            f"{self.artifact_path}/{BASE_DIR}/{{}}.ckpt".format
+        )
 
-        os.mkdir(f"{self.artifact_path}/{BASE_DIR}")
+        self.base_path = f"{self.artifact_path}/{BASE_DIR}"
+        os.mkdir(self.base_path)
+
+        self.weigths_plots_path = f"{self.base_path}/weights_plots/"
+        os.mkdir(self.weigths_plots_path)
 
         self.inputs: torch.Tensor
 
@@ -53,7 +74,8 @@ class VisualizerCallback(Callback):
         targets = trainer.datamodule.sample[1].detach().clone().to("cpu")  # type: ignore
 
         # TODO finish implem meta file
-        with open(self.artifact_format("meta"), "wb") as meta_file:
+        # TODO image grid print of inputs/targets on TB
+        with open(self.artifact_format_pickle("meta"), "wb") as meta_file:
             pickle.dump(
                 {
                     "inputs": self.inputs.cpu(),
@@ -62,62 +84,6 @@ class VisualizerCallback(Callback):
                 },
                 meta_file,
             )
-
-    def _save(self, module: pl.LightningModule) -> None:
-        outputs, weights, handles = [], [], []
-        index = 0
-
-        def add_hook(module_: torch.nn.Module) -> None:
-            def forward_hook(  # pylint: disable=unused-argument
-                module__: torch.nn.Module,
-                module_input: torch.Tensor,
-                module_output: torch.Tensor,
-            ) -> None:
-                nonlocal index
-                nonlocal outputs
-                nonlocal weights
-                # TODO only save output, index and name on init (meta)
-                # TODO save les outputs de tous les layers seulement si debug max
-                # (i.e créer un mode benchmarck pour save seulement l'output du net)
-
-                outputs.append(
-                    (index, type(module__).__name__, module_output.cpu())
-                )
-
-                module_data = {}
-
-                for param_name, param in module__.named_parameters():
-                    module_data[param_name] = param.data.cpu()
-
-                for buffer_name, buffer in module__.named_buffers():
-                    module_data[buffer_name] = buffer.data.cpu()
-
-                weights.append((index, type(module__).__name__, module_data))
-                index += 1
-
-            nonlocal handles
-            handles.append(module_.register_forward_hook(forward_hook))
-
-        module.apply(add_hook)
-
-        with torch.no_grad():
-            module.predict_step(self.inputs, -1)
-
-        with open(
-            self.artifact_format(f"{self.saved_batch:06}"), "wb"
-        ) as dump_file:
-            pickle.dump(
-                {
-                    "network_outputs": outputs[:-1],
-                    "layers_weights": weights[:-1],
-                },
-                dump_file,
-            )
-
-        for handle in handles:
-            handle.remove()
-
-        self.saved_batch += 1
 
     def on_train_batch_start(
         self,
@@ -129,6 +95,126 @@ class VisualizerCallback(Callback):
         super().on_train_batch_start(trainer, pl_module, batch, batch_idx)
 
         if self.current_batch % self.frequency == 0:
-            self._save(pl_module)
+            trainer.save_checkpoint(
+                self.artifact_format_ckpt(f"{self.saved_batch:06}")
+            )
+
+            self.saved_batch += 1
 
         self.current_batch += 1
+
+    def on_train_end(
+        self, trainer: pl.Trainer, pl_module: pl.LightningModule
+    ) -> None:
+        """
+        For each compatible layer, plot the weights for direct visualization.
+        """
+        index, handles = 0, []
+
+        def add_hook(module_: torch.nn.Module) -> None:
+            def forward_hook(  # pylint: disable=unused-argument
+                module__: torch.nn.Module,
+                module_input: torch.Tensor,
+                module_output: torch.Tensor,
+            ) -> None:
+                nonlocal index
+
+                if hasattr(module_, "plot"):
+                    plot_method = getattr(module_, "plot")
+                    try:
+                        path = f"{self.weigths_plots_path}/{index}_{type(module_).__name__.lower()}.png"
+                        plot_method(path=path)
+                    except NotImplementedError:
+                        pass
+
+                index += 1
+
+            nonlocal handles
+            handles.append(module_.register_forward_hook(forward_hook))
+
+        pl_module.apply(add_hook)
+
+        with torch.no_grad():
+            pl_module.predict_step(self.inputs, -1)
+
+        for handle in handles:
+            handle.remove()
+
+    @staticmethod
+    def plot_saved_model(
+        model_class: Type, ckpt_path: str, log_dir: str, inputs: torch.Tensor
+    ) -> None:
+        """
+        For each compatible layer, plot the weights of the given model
+        checkpoint for direct visualization.
+        """
+        index, handles = 0, []
+        pl_module = model_class.load_from_checkpoint(ckpt_path)
+
+        os.mkdir(log_dir)
+
+        def add_hook(module_: torch.nn.Module) -> None:
+            def forward_hook(  # pylint: disable=unused-argument
+                module__: torch.nn.Module,
+                module_input: torch.Tensor,
+                module_output: torch.Tensor,
+            ) -> None:
+                nonlocal index
+
+                if hasattr(module_, "plot"):
+                    plot_method = getattr(module_, "plot")
+                    try:
+                        path = f"{log_dir}/{index}_{type(module_).__name__.lower()}.png"
+                        plot_method(path=path)
+                    except NotImplementedError:
+                        print("skipping", module_.__class__.__name__)
+
+                index += 1
+
+            nonlocal handles
+            handles.append(module_.register_forward_hook(forward_hook))
+
+        pl_module.apply(add_hook)
+
+        with torch.no_grad():
+            pl_module.predict_step(inputs, -1)
+
+        for handle in handles:
+            handle.remove()
+
+    def on_fit_start(
+        self, trainer: pl.Trainer, pl_module: pl.LightningModule
+    ) -> None:
+        """
+        Taken from pytorch_lightning.callbacks.model_summary.py
+        Print a summary of the model to a `model_summary.txt` file
+        """
+        if not self._max_depth or not trainer.is_global_zero:
+            return
+
+        model_summary: Union[DeepSpeedSummary, ModelSummary]
+        if (
+            isinstance(trainer.strategy, DeepSpeedStrategy)
+            and trainer.strategy.zero_stage_3
+        ):
+            model_summary = DeepSpeedSummary(
+                pl_module, max_depth=self._max_depth
+            )
+        else:
+            model_summary = summarize(pl_module, max_depth=self._max_depth)
+
+        summary_data = (
+            model_summary._get_summary_data()  # pylint: disable=protected-access
+        )
+        total_parameters = model_summary.total_parameters
+        trainable_parameters = model_summary.trainable_parameters
+        model_size = model_summary.model_size
+
+        summary_table = _format_summary_table(
+            total_parameters, trainable_parameters, model_size, *summary_data
+        )
+        with open(
+            f"{self.artifact_path}/model_summary.txt", "w", encoding="utf-8"
+        ) as summary_file:
+            with redirect_stdout(summary_file):
+                print(summary_table)

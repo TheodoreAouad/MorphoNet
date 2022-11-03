@@ -18,6 +18,14 @@ class LMorphNet(BaseNetwork):
         **kwargs: Any,
     ):
         super().__init__(loss_function=loss_function)
+        self._set_hparams(
+            {
+                "filter_size": filter_size,
+                "loss_function": loss_function,
+                **kwargs,
+            }
+        )
+
         self.lm1 = LMorph(
             in_channels=1, out_channels=1, filter_size=filter_size, **kwargs
         )

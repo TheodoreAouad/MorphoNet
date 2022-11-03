@@ -18,6 +18,14 @@ class SMorphNet(BaseNetwork):
         **kwargs: Any,
     ):
         super().__init__(loss_function=loss_function)
+        self._set_hparams(
+            {
+                "filter_size": filter_size,
+                "loss_function": loss_function,
+                **kwargs,
+            }
+        )
+
         self.sm1 = SMorph(
             in_channels=1, out_channels=1, filter_size=filter_size, **kwargs
         )
@@ -31,6 +39,7 @@ class SMorphNet(BaseNetwork):
         batch = self.sb1(batch)
 
         return batch
+
 
 class SMorphNetTanh(SMorphNet):
     """Network with one SMorphTanh layer."""

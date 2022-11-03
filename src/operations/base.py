@@ -1,17 +1,22 @@
 """Base abstract classes to construct target images."""
 
 from abc import abstractmethod, ABCMeta
-from typing import List, Any, Optional
+from typing import List, Any, Optional, Tuple
 import inspect
 
 import numpy as np
+import torch
+
+from misc.utils import fit_NCHW
 
 
 class Operation(metaclass=ABCMeta):
     """Abstract class stating required methods for operations."""
 
     @abstractmethod
-    def __call__(self, inputs: np.ndarray, targets: np.ndarray) -> np.ndarray:
+    def __call__(
+        self, inputs: torch.Tensor, targets: torch.Tensor
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
         """Method to compute the desired targets."""
 
     @classmethod
@@ -53,15 +58,21 @@ class MorphologicalOperation(Operation):
     ) -> None:
         self.structuring_element = structuring_element
 
-    def __call__(self, inputs: np.ndarray, targets: np.ndarray) -> np.ndarray:
-        return np.array(
-            [
-                self._func(x.squeeze(), self.structuring_element)[
-                    np.newaxis, ...
+    def __call__(
+        self, inputs: torch.Tensor, targets: torch.Tensor
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        targets = torch.from_numpy(
+            np.array(
+                [
+                    self._func(x.squeeze(), self.structuring_element)[
+                        np.newaxis, ...
+                    ]
+                    for x in inputs.numpy()
                 ]
-                for x in inputs
-            ]
+            )
         )
+
+        return fit_NCHW(inputs), fit_NCHW(targets)
 
     @abstractmethod
     def _func(
@@ -79,16 +90,19 @@ class NoiseOperation(Operation):
         self.percentage = percentage
 
     def __call__(
-        self,
-        inputs: np.ndarray,
-        targets: np.ndarray,
-    ) -> np.ndarray:
-        return np.array(
-            [
-                self._func(x.squeeze(), self.percentage)[np.newaxis, ...]
-                for x in inputs
-            ]
+        self, inputs: torch.Tensor, targets: torch.Tensor
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        targets = inputs
+        inputs = torch.from_numpy(
+            np.array(
+                [
+                    self._func(x.squeeze(), self.percentage)[np.newaxis, ...]
+                    for x in inputs.numpy()
+                ]
+            )
         )
+
+        return fit_NCHW(inputs), fit_NCHW(targets)
 
     @abstractmethod
     def _func(self, image: np.ndarray, percentage: int) -> np.ndarray:

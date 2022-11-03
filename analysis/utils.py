@@ -2,9 +2,8 @@
 
 import os
 import pickle
-import inspect
-from typing import Any, Dict, List, Union, Callable, Optional, Type
-from abc import ABCMeta, abstractmethod
+from typing import Any, List, Union, Callable, Optional
+from collections import OrderedDict
 
 import matplotlib.pyplot as plt
 import mlflow
@@ -12,6 +11,10 @@ import numpy as np
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from mlflow.entities import Run
 from matplotlib.axes._axes import Axes
+import pytorch_lightning as pl
+import torch
+
+from models.base import BaseNetwork
 
 
 def get_true_path(path: str) -> str:
@@ -26,10 +29,21 @@ def get_visfile_path(run: Run) -> str:
     """Get last saved visualisation file path."""
     outputs_path = get_true_path(run.info.artifact_uri) + "/outputs/"
 
-    paths = list(filter(lambda p: p != "meta.pickle", os.listdir(outputs_path)))
+    paths = list(
+        filter(
+            lambda p: p != "meta.pickle"
+            and not os.path.isdir(outputs_path + p),
+            os.listdir(outputs_path),
+        )
+    )
     paths.sort()
 
     return outputs_path + paths[-1]
+
+
+def get_metafile_path(run: Run) -> str:
+    """Get meta file path."""
+    return get_true_path(run.info.artifact_uri) + "/outputs/meta.pickle"
 
 
 def get_keys(path: str) -> None:
@@ -45,106 +59,6 @@ def plot_sel(
 ) -> None:  # pylint: disable=unused-argument
     """Plot desired structuring element."""
     raise Exception("Not implemented")
-
-
-class Plot(metaclass=ABCMeta):
-    """Base plot class."""
-
-    @staticmethod
-    @abstractmethod
-    def plot(axis: Axes, data: Dict[str, Any], run: Run) -> Axes:
-        """Plot the filter weights on a given axis."""
-
-    @classmethod
-    def select(cls, name: str) -> Type["Plot"]:
-        """
-        Class method iterating over all subclasses to return the desirect class.
-        """
-        selected = cls.select_(name)
-        if selected is None:
-            raise Exception("No layer found")
-
-        return selected
-
-    @classmethod
-    def select_(cls, name: str) -> Optional[Type["Plot"]]:
-        """
-        Class method iterating over all subclasses to return the desirect class.
-        """
-        if cls.__name__ == name:
-            return cls
-
-        for subclass in cls.__subclasses__():
-            instance = subclass.select(name)
-            if instance is not None:
-                return instance
-
-        return None
-
-    @classmethod
-    def listing(cls) -> List[str]:
-        """List all the available ploting models."""
-        subclasses = set()
-        if not inspect.isabstract(cls):
-            subclasses = {cls.__name__}
-
-        for subclass in cls.__subclasses__():
-            subclasses = subclasses.union(subclass.listing())
-
-        return list(subclasses)
-
-
-class SMorph(Plot):
-    """Class containing function to plot SMorph layer."""
-
-    @staticmethod
-    def plot(axis: Axes, data: Dict[str, Any], run: Run) -> Axes:
-        alpha = data["alpha"].squeeze()
-        cmap = "plasma" if alpha > 0 else "plasma_r"
-
-        axis.invert_yaxis()
-        axis.get_yaxis().set_ticks([])
-        axis.get_xaxis().set_ticks([])
-        axis.set_box_aspect(1)
-
-        plot = axis.pcolormesh(data["filter"].squeeze(), cmap=cmap)
-        divider = make_axes_locatable(axis)
-        clb_ax = divider.append_axes("right", size="5%", pad=0.05)
-        clb_ax.set_box_aspect(15)
-        plt.colorbar(plot, cax=clb_ax)
-
-        axis.set_title(r"$\alpha$: " + f"{alpha:.3f}", fontsize=20)
-        axis.set_xlabel("RMSE: {}\nLoss: {}", fontsize=20)
-
-        return axis
-
-
-class SMorphTanh(Plot):
-    """Class containing function to plot SMorphTanh layer."""
-
-    @staticmethod
-    def plot(axis: Axes, data: Dict[str, Any], run: Run) -> Axes:
-        """Plot the filter weights on a given axis."""
-        axis.invert_yaxis()
-        axis.get_yaxis().set_ticks([])
-        axis.get_xaxis().set_ticks([])
-        axis.set_box_aspect(1)
-
-        plot = axis.pcolormesh(data["filter"].squeeze(), cmap="plasma")
-        divider = make_axes_locatable(axis)
-        clb_ax = divider.append_axes("right", size="5%", pad=0.05)
-        clb_ax.set_box_aspect(15)
-        plt.colorbar(plot, cax=clb_ax)
-
-        axis.set_title(
-            r"$\alpha$: " + f"{data['alpha'].squeeze():.3f}", fontsize=20
-        )
-        axis.set_xlabel("RMSE: {}\nLoss: {}", fontsize=20)
-
-        return axis
-
-
-PLOTABLE_CLASSES: List[str] = Plot.listing()
 
 
 def plot_selem_row(axes: Axes, structuring_elements: List[str]) -> Axes:
@@ -197,12 +111,41 @@ def filter_runs(
     return filtered
 
 
-def is_plotable(class_name: str, excluded: Optional[List[str]]) -> bool:
-    """Check if the layer can be displayed."""
-    if excluded is None:
-        return class_name in PLOTABLE_CLASSES
+def forward(pl_module: pl.LightningModule, inputs: torch.Tensor) -> OrderedDict:
+    """
+    Execute a forward pass with the given model to get layers' `plot_` methods.
+    """
+    index, modules, handles = 0, {}, []
 
-    return class_name not in excluded and class_name in PLOTABLE_CLASSES
+    def add_hook(module_: torch.nn.Module) -> None:
+        def forward_hook(  # pylint: disable=unused-argument
+            module__: torch.nn.Module,
+            module_input: torch.Tensor,
+            module_output: torch.Tensor,
+        ) -> None:
+            nonlocal index
+
+            if hasattr(module_, "plot_"):
+                plot_method = getattr(module_, "plot_")
+            else:
+                plot_method = None
+
+            modules[index] = (module_.__class__.__name__, plot_method)
+
+            index += 1
+
+        nonlocal handles
+        handles.append(module_.register_forward_hook(forward_hook))
+
+    pl_module.apply(add_hook)
+
+    with torch.no_grad():
+        pl_module.predict_step(inputs, -1)
+
+    for handle in handles:
+        handle.remove()
+
+    return OrderedDict(sorted(modules.items()))
 
 
 def ploting(  # pylint: disable=too-many-locals,too-many-arguments,unused-argument
@@ -262,21 +205,37 @@ def ploting(  # pylint: disable=too-many-locals,too-many-arguments,unused-argume
                         operation,
                         lambda x, y: x == y,
                     )
+                    if len(filtered) == 0:
+                        continue
+
                     run = filtered[iteration]
 
-                    with open(get_visfile_path(run), "rb") as visfile:
-                        saved_data = pickle.load(visfile)
+                    model_class = BaseNetwork.select_(model)
+                    if model_class is None:
+                        continue
+
+                    pl_module = model_class.load_from_checkpoint(
+                        get_visfile_path(run)
+                    )
+
+                    with open(get_metafile_path(run), "rb") as metafile:
+                        inputs = pickle.load(metafile)["inputs"]
+
                         axis = axes[1 + idx_m * len(operations) + idx_o, idx_s]
                         divider = make_axes_locatable(axis)
                         first_layer = True
+
+                        modules = forward(
+                            pl_module, inputs[0][None, :, :, :]
+                        ).items()
+
                         for (  # pylint: disable=unused-variable
                             layer_index,
-                            class_name,
-                            data,
-                        ) in saved_data[
-                            "layers_weights"
-                        ]:
-                            if not is_plotable(class_name, excluded):
+                            (class_name, plot_method),
+                        ) in modules:
+                            if plot_method is None or (
+                                excluded is not None and class_name in excluded
+                            ):
                                 continue
 
                             if not first_layer:
@@ -284,8 +243,10 @@ def ploting(  # pylint: disable=too-many-locals,too-many-arguments,unused-argume
                                     "right", size="100%", pad=0.2
                                 )
 
-                            axis = Plot.select(class_name).plot(axis, data, run)
-
-                            first_layer = False
+                            try:
+                                plot_method(axis=axis)
+                                first_layer = False
+                            except NotImplementedError:
+                                pass
 
         plt.show()

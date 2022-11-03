@@ -1,18 +1,21 @@
 """Layer implementing the SMorph function."""
 
-from typing import Any
+from typing import Any, Optional
 import torch
 from torch import nn
 import mlflow
-import pytorch_lightning as pl
+import matplotlib.pyplot as plt
+from mpl_toolkits.axes_grid1 import make_axes_locatable
+from matplotlib.axes._axes import Axes
 
+from models.layers import PAD_MODE
 from .utils import init_context, folded_normal_
+from .base import BaseLayer
 
 # TODO shared param, alpha and/or filter
-PAD_MODE = "reflect"
 
 
-class SMorph(pl.LightningModule):
+class SMorph(BaseLayer):
     """Module implementing the SMorph function."""
 
     def __init__(
@@ -67,6 +70,30 @@ class SMorph(pl.LightningModule):
 
         return result.view(*batch.size())
 
+    def plot_(
+        self, axis: Axes, cmap: str = "plasma", comments: Optional[str] = None
+    ) -> Axes:
+        alpha = self.alpha.squeeze().detach().cpu()
+        if alpha < 0:
+            cmap = "plasma_r"
+
+        axis.invert_yaxis()
+        axis.get_yaxis().set_ticks([])
+        axis.get_xaxis().set_ticks([])
+        axis.set_box_aspect(1)
+
+        plot = axis.pcolormesh(self.filter.squeeze().detach().cpu(), cmap=cmap)
+        divider = make_axes_locatable(axis)
+        clb_ax = divider.append_axes("right", size="5%", pad=0.05)
+        clb_ax.set_box_aspect(15)
+        plt.colorbar(plot, cax=clb_ax)
+
+        axis.set_title(r"$\alpha$: " + f"{alpha:.3f}", fontsize=20)
+        if comments is not None:
+            axis.set_xlabel(comments, fontsize=20)
+
+        return axis
+
 
 class SMorphTanh(SMorph):
     """Module implementing the SMorph function with tanh modification."""
@@ -91,3 +118,26 @@ class SMorphTanh(SMorph):
         result = sum_exp_sum_alpha.sum(2) / exp_sum_alpha.sum(2)
 
         return result.view(*batch.size())
+
+    def plot_(
+        self, axis: Axes, cmap: str = "plasma", comments: Optional[str] = None
+    ) -> Axes:
+        axis.invert_yaxis()
+        axis.get_yaxis().set_ticks([])
+        axis.get_xaxis().set_ticks([])
+        axis.set_box_aspect(1)
+
+        plot = axis.pcolormesh(self.filter.squeeze().detach().cpu(), cmap=cmap)
+        divider = make_axes_locatable(axis)
+        clb_ax = divider.append_axes("right", size="5%", pad=0.05)
+        clb_ax.set_box_aspect(15)
+        plt.colorbar(plot, cax=clb_ax)
+
+        axis.set_title(
+            r"$\alpha$: " + f"{self.alpha.squeeze().detach().cpu():.3f}",
+            fontsize=20,
+        )
+        if comments is not None:
+            axis.set_xlabel(comments, fontsize=20)
+
+        return axis

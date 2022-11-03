@@ -1,7 +1,7 @@
 """Base model with default optimizer, scheduler, and tracked metrics."""
 
 from abc import ABCMeta, abstractmethod
-from typing import Optional, List, Dict, Any, Callable, Tuple
+from typing import Optional, List, Dict, Any, Callable, Tuple, Type
 import inspect
 
 from pytorch_lightning.utilities.types import STEP_OUTPUT
@@ -21,6 +21,8 @@ class BaseNetwork(pl.LightningModule, metaclass=ABCMeta):
     ) -> None:
         super().__init__(*args, **kwargs)
         self.loss_function = loss_function
+
+        self.example_input_array: Optional[torch.Tensor]
 
     def configure_optimizers(self) -> Dict[str, Any]:
         """Configure optimizer and scheduler."""
@@ -73,16 +75,16 @@ class BaseNetwork(pl.LightningModule, metaclass=ABCMeta):
         return loss
 
     @classmethod
-    def select_(cls, name: str, **kwargs: Any) -> Optional["BaseNetwork"]:
+    def select_(cls, name: str) -> Optional[Type["BaseNetwork"]]:
         """
-        Recursive class method iterating over all subclasses to instantiate the
-        desired model.
+        Recursive class method iterating over all subclasses to return the
+        desired model class.
         """
         if cls.__name__.lower() == name:
-            return cls(**kwargs)
+            return cls
 
         for subclass in cls.__subclasses__():
-            instance = subclass.select_(name, **kwargs)
+            instance = subclass.select_(name)
             if instance is not None:
                 return instance
 
@@ -95,11 +97,11 @@ class BaseNetwork(pl.LightningModule, metaclass=ABCMeta):
         model.
         """
 
-        selected = cls.select_(name, **kwargs)
+        selected = cls.select_(name)
         if selected is None:
             raise Exception("The selected class was not found.")
 
-        return selected
+        return selected(**kwargs)
 
     @classmethod
     def listing(cls) -> List[str]:
