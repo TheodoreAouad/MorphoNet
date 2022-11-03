@@ -22,6 +22,8 @@ from pytorch_lightning.utilities.model_summary.model_summary import (
 from mlflow.utils.file_utils import local_file_uri_to_path  # type: ignore
 from mlflow import ActiveRun
 
+from operations.structuring_elements import StructuringElement
+
 BASE_DIR = "outputs"
 
 
@@ -33,15 +35,20 @@ class VisualizerCallback(
     def __init__(
         self,
         run: ActiveRun,
-        structuring_element: np.ndarray,
+        structuring_element: StructuringElement,
         frequency: int = 16,
     ) -> None:
         super().__init__()
         self.frequency = frequency
         self.current_batch = 0
         self.saved_batch = 0
-        self.structuring_element = structuring_element
         self._max_depth = 1
+        try:
+            self.structuring_element: Optional[
+                np.ndarray
+            ] = structuring_element()
+        except NotImplementedError:
+            self.structuring_element = None
 
         self.artifact_path = local_file_uri_to_path(run.info.artifact_uri)
         self.artifact_format_pickle = (

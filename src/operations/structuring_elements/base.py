@@ -1,8 +1,9 @@
 """Base abstract classes to construct structuring elements."""
 
 from abc import abstractmethod, ABCMeta
-from typing import Optional, Any, List
+from typing import Optional, Any, List, Type
 import inspect
+import logging
 
 from skimage import morphology
 import numpy as np
@@ -29,20 +30,34 @@ class StructuringElement(metaclass=ABCMeta):
         """Method to construct and draw the desired structuring element."""
 
     @classmethod
-    def select(cls, name: str, **kwargs: Any) -> Optional["StructuringElement"]:
+    def select_(cls, name: str) -> Optional[Type["StructuringElement"]]:
         """
-        Class method iterating over all subclasses to instantiate the desired
-        structuring element.
+        Class method iterating over all subclasses to return the desired
+        structuring element class.
         """
         if cls.__name__.lower() == name:
-            return cls(**kwargs)
+            return cls
 
         for subclass in cls.__subclasses__():
-            instance = subclass.select(name, **kwargs)
+            instance = subclass.select_(name)
             if instance is not None:
                 return instance
 
         return None
+
+    @classmethod
+    def select(cls, name: str, **kwargs: Any) -> "StructuringElement":
+        """
+        Class method iterating over all subclasses to instantiate the desired
+        structuring element.
+        """
+
+        selected = cls.select_(name)
+        if selected is None:
+            logging.info("No matching structuring element found")
+            return Empty()
+
+        return selected(**kwargs)
 
     @classmethod
     def listing(cls) -> List[str]:
@@ -75,6 +90,19 @@ class StructuringElement(metaclass=ABCMeta):
         ] = center
 
         return centered
+
+
+class Empty(StructuringElement):
+    """No structuring element."""
+
+    def __init__(self, filter_size: int = -1, precision: str = "") -> None:
+        super().__init__(filter_size, precision)
+
+    def _draw(self, radius: int) -> np.ndarray:
+        raise NotImplementedError
+
+    def __call__(self) -> np.ndarray:
+        raise NotImplementedError
 
 
 class Disk(StructuringElement):

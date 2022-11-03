@@ -3,11 +3,14 @@
 from abc import abstractmethod, ABCMeta
 from typing import List, Any, Optional, Tuple
 import inspect
+import logging
+import sys
 
 import numpy as np
 import torch
 
 from misc.utils import fit_NCHW
+from .structuring_elements import StructuringElement
 
 
 class Operation(metaclass=ABCMeta):
@@ -53,10 +56,16 @@ class MorphologicalOperation(Operation):
 
     def __init__(  # pylint: disable=unused-argument
         self,
-        structuring_element: np.ndarray,
+        structuring_element: StructuringElement,
         **kwargs: Any,
     ) -> None:
-        self.structuring_element = structuring_element
+        try:
+            self.structuring_element = structuring_element()
+        except NotImplementedError:
+            logging.error(
+                "Morphological operations need a structuring element."
+            )
+            sys.exit(1)
 
     def __call__(
         self, inputs: torch.Tensor, targets: torch.Tensor

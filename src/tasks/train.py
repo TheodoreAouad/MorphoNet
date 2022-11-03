@@ -3,14 +3,15 @@
 import logging
 import os
 import re
-from typing import Dict, Any, Union
+from typing import Dict, Any, Union, Tuple
+from argparse import Namespace
 
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 from pytorch_lightning.callbacks import TQDMProgressBar, ModelCheckpoint
 from pytorch_lightning.loggers import TensorBoardLogger, MLFlowLogger
 from pytorch_lightning import Trainer
 import mlflow.pytorch
-import numpy as np
+from mlflow import ActiveRun
 
 from misc.context import RunContext, Task
 from misc.parser import parser, LOSSES
@@ -39,23 +40,32 @@ logging.basicConfig(
 # TODO select and select_ methods types like for models
 
 
-def termination_logs(
-    version: Union[str, int], state_dict: Dict[str, Any]
+def termination_logs(  # pylint: disable=too-many-arguments
+    version: Union[str, int],
+    state_dict: Dict[str, Any],
+    data_module: DataModule,
+    model: BaseNetwork,
+    trainer: Trainer,
+    args: Namespace,
+    visualizer: VisualizerCallback,
 ) -> None:
     """Write logs after training."""
     # Avoiding a pytorch_lightning error reconstructing with `log_graph=True`
-    logger = TensorBoardLogger(
+    tb_logger = TensorBoardLogger(
         f"{os.getcwd()}/lightning_logs/",
         name=args.experiment,
         version=version,
         log_graph=True,
     )
-    logger.log_graph(model, data_module.sample[0])
-    logger.log_hyperparams(vars(args))
-    for idx, image in enumerate(visualizer.inputs.cpu()):
-        logger.experiment.add_image(f"Inputs Sample {idx}", image)
+    tb_logger.log_graph(model, data_module.sample[0])
+    tb_logger.log_hyperparams(vars(args))
+    for idx, (input_image, target_image) in enumerate(
+        zip(data_module.sample[0].cpu(), data_module.sample[1].cpu())
+    ):
+        tb_logger.experiment.add_image(f"Input Sample {idx}", input_image)
+        tb_logger.experiment.add_image(f"Target Sample {idx}", target_image)
 
-    mlflow.log_param("TB_folder", logger.log_dir)
+    mlflow.log_param("TB_folder", tb_logger.log_dir)
     mlflow.log_metrics(
         dict(
             map(
@@ -78,96 +88,123 @@ def termination_logs(
         )
 
 
+def init_callbacks(
+    run: ActiveRun, structuring_element: StructuringElement, args: Namespace
+) -> Tuple[
+    VisualizerCallback,
+    ModelCheckpoint,
+    EarlyStopping,
+    TensorBoardLogger,
+    TQDMProgressBar,
+]:
+    """Init callbacks used during training."""
+    visualizer = VisualizerCallback(run, structuring_element, args.vis_freq)
+    model_checkpoint = ModelCheckpoint(monitor="val_loss")
+    early_stopping = EarlyStopping(
+        monitor=VAL_LOSS,
+        min_delta=0.00,
+        patience=args.patience,
+        verbose=False,
+        mode="min",  # TODO change for classif
+    )
+    tb_logger = TensorBoardLogger(
+        f"{os.getcwd()}/lightning_logs/", name=args.experiment
+    )
+    progress_bar = TQDMProgressBar(refresh_rate=100)
+
+    return visualizer, model_checkpoint, early_stopping, tb_logger, progress_bar
+
+
+def main(args: Namespace, run: ActiveRun) -> None:
+    """Main loop preparing training data and starting fitting loop."""
+    with Task("Logging parameters"):
+        mlflow.log_params(vars(args))
+
+    with Task("Loading structuring element"):
+        structuring_element = StructuringElement.select(
+            name=args.structuring_element,
+            filter_size=args.filter_size,
+            precision=args.precision,
+        )
+
+    with Task("Loading operation"):
+        operation = Operation.select(
+            name=args.operation,
+            structuring_element=structuring_element,
+            percentage=args.percentage,
+        )
+
+    # TODO model should have available keys in args
+    with Task("Loading model"):
+        model = BaseNetwork.select(
+            name=args.model,
+            filter_size=args.filter_size,
+            loss_function=LOSSES[args.loss](),
+            dtype=PRECISIONS_TORCH[args.precision],
+            # device=device,
+        )
+
+    # Accuracy of best val loss comparison
+    # TODO check dtype for the modle (should be same as arg)
+
+    with Task("Loading dataset"):
+        data_module = DataModule.select(
+            name=args.dataset,
+            dataset_path=args.dataset_path,
+            batch_size=args.batch_size,
+            precision=args.precision,
+            operation=operation,
+        )
+
+    (
+        visualizer,
+        model_checkpoint,
+        early_stopping,
+        tb_logger,
+        progress_bar,
+    ) = init_callbacks(run, structuring_element, args)
+
+    trainer = Trainer(
+        max_epochs=args.epochs,
+        callbacks=[
+            progress_bar,
+            early_stopping,
+            visualizer,
+            model_checkpoint,
+        ],
+        log_every_n_steps=1,
+        accelerator="gpu",
+        devices=[args.gpu],
+        logger=[tb_logger],
+        enable_checkpointing=True,
+        enable_progress_bar=True,
+        enable_model_summary=True,
+        fast_dev_run=False,
+    )
+
+    trainer.fit(model=model, datamodule=data_module)
+
+    termination_logs(
+        tb_logger.version,
+        model_checkpoint.state_dict(),
+        data_module,
+        model,
+        trainer,
+        args,
+        visualizer,
+    )
+
+
 if __name__ == "__main__":
     with Task("Parsing command line"):
-        args = parser.parse_args()
+        args_ = parser.parse_args()
         # device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
     mlf_logger = MLFlowLogger(
-        experiment_name=args.experiment,
+        experiment_name=args_.experiment,
         tracking_uri=f"file://{os.getcwd()}/mlruns",
     )
-    with mlflow.start_run(mlf_logger.run_id) as run, RunContext(
-        run, output_managment
+    with mlflow.start_run(mlf_logger.run_id) as run_, RunContext(
+        run_, output_managment
     ):
-        with Task("Logging parameters"):
-            mlflow.log_params(vars(args))
-
-        with Task("Loading structuring element"):
-            structuring_element_class = StructuringElement.select(
-                name=args.structuring_element,
-                filter_size=args.filter_size,
-                precision=args.precision,
-            )
-
-            if structuring_element_class is None:
-                logging.info("No matching structuring element found")
-                structuring_element = np.empty(0)
-            else:
-                structuring_element = structuring_element_class()
-
-        with Task("Loading operation"):
-            operation = Operation.select(
-                name=args.operation,
-                structuring_element=structuring_element,
-                percentage=args.percentage,
-            )
-
-        # TODO model should have available keys in args
-        with Task("Loading model"):
-            model = BaseNetwork.select(
-                name=args.model,
-                filter_size=args.filter_size,
-                loss_function=LOSSES[args.loss](),
-                dtype=PRECISIONS_TORCH[args.precision],
-                # device=device,
-            )
-
-        # Accuracy of best val loss comparison
-        # TODO check dtype for the modle (should be same as arg)
-
-        with Task("Loading dataset"):
-            data_module = DataModule.select(
-                name=args.dataset,
-                dataset_path=args.dataset_path,
-                batch_size=args.batch_size,
-                precision=args.precision,
-                operation=operation,
-            )
-
-        visualizer = VisualizerCallback(run, structuring_element, args.vis_freq)
-        model_checkpoint = ModelCheckpoint(monitor="val_loss")
-        early_stop_callback = EarlyStopping(
-            monitor=VAL_LOSS,
-            min_delta=0.00,
-            patience=args.patience,
-            verbose=False,
-            mode="min",  # TODO change for classif
-        )
-        tb_logger = TensorBoardLogger(
-            f"{os.getcwd()}/lightning_logs/", name=args.experiment
-        )
-        trainer = Trainer(
-            max_epochs=args.epochs,
-            callbacks=[
-                TQDMProgressBar(refresh_rate=100),
-                early_stop_callback,
-                visualizer,
-                model_checkpoint,
-            ],
-            log_every_n_steps=1,
-            accelerator="gpu",
-            devices=[args.gpu],
-            logger=[tb_logger],
-            enable_checkpointing=True,
-            enable_progress_bar=True,
-            enable_model_summary=True,
-            fast_dev_run=True,
-        )
-
-        trainer.fit(
-            model=model,
-            datamodule=data_module,
-        )
-
-        termination_logs(tb_logger.version, model_checkpoint.state_dict())
+        main(args_, run_)
