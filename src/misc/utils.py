@@ -33,6 +33,15 @@ def _fit_NCHW(tensor: torch.Tensor, include_c: bool = False) -> torch.Tensor:
     return tensor[:, None, :, :]  # 2D data with N samples (N, C, W)
 
 
+def RMSE(array_x: np.ndarray, array_y: np.ndarray) -> float:
+    array_x_ = (array_x - np.min(array_x)) / (np.max(array_x) - np.min(array_x))
+    array_y_ = (array_y - np.min(array_y)) / (np.max(array_y) - np.min(array_y))
+
+    sum_ = np.sum(np.square(array_x_ - array_y_))
+
+    return np.sqrt(sum_ / np.prod(array_x_.shape))
+
+
 def split_arg(value, mapper=lambda a: a):  # type: ignore
     if value is None:
         return None

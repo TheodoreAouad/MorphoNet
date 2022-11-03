@@ -3,12 +3,13 @@
 from typing import Any, Optional
 import torch
 from torch import nn
-import mlflow
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from matplotlib.axes._axes import Axes
+import numpy as np
 
 from models.layers import PAD_MODE
+from misc.utils import RMSE
 from .utils import init_context, folded_normal_
 from .base import BaseLayer
 
@@ -43,8 +44,6 @@ class SMorph(BaseLayer):
 
         self.init_parameters()
 
-        mlflow.log_param("pad_mode", PAD_MODE)
-
     def init_parameters(self) -> None:
         """Initialize tensors."""
         with torch.no_grad():
@@ -71,26 +70,38 @@ class SMorph(BaseLayer):
         return result.view(*batch.size())
 
     def plot_(
-        self, axis: Axes, cmap: str = "plasma", comments: Optional[str] = None
+        self,
+        axis: Axes,
+        cmap: str = "plasma",
+        target: Optional[np.ndarray] = None,
+        comments: str = "",
     ) -> Axes:
         alpha = self.alpha.squeeze().detach().cpu()
         if alpha < 0:
             cmap = "plasma_r"
+            invert = -1
+        else:
+            invert = 1
 
         axis.invert_yaxis()
         axis.get_yaxis().set_ticks([])
         axis.get_xaxis().set_ticks([])
         axis.set_box_aspect(1)
 
-        plot = axis.pcolormesh(self.filter.squeeze().detach().cpu(), cmap=cmap)
+        filter_ = self.filter.squeeze().detach().cpu()
+
+        plot = axis.pcolormesh(filter_, cmap=cmap)
         divider = make_axes_locatable(axis)
         clb_ax = divider.append_axes("right", size="5%", pad=0.05)
         clb_ax.set_box_aspect(15)
         plt.colorbar(plot, cax=clb_ax)
 
         axis.set_title(r"$\alpha$: " + f"{alpha:.3f}", fontsize=20)
-        if comments is not None:
-            axis.set_xlabel(comments, fontsize=20)
+        if target is not None:
+            rmse = RMSE(filter_.numpy() * invert, target)
+            comments = f"RMSE: {rmse:.3f}\n{comments}"
+
+        axis.set_xlabel(comments, fontsize=20)
 
         return axis
 
@@ -120,14 +131,20 @@ class SMorphTanh(SMorph):
         return result.view(*batch.size())
 
     def plot_(
-        self, axis: Axes, cmap: str = "plasma", comments: Optional[str] = None
+        self,
+        axis: Axes,
+        cmap: str = "plasma",
+        target: Optional[np.ndarray] = None,
+        comments: str = "",
     ) -> Axes:
         axis.invert_yaxis()
         axis.get_yaxis().set_ticks([])
         axis.get_xaxis().set_ticks([])
         axis.set_box_aspect(1)
 
-        plot = axis.pcolormesh(self.filter.squeeze().detach().cpu(), cmap=cmap)
+        filter_ = self.filter.squeeze().detach().cpu()
+
+        plot = axis.pcolormesh(filter_, cmap=cmap)
         divider = make_axes_locatable(axis)
         clb_ax = divider.append_axes("right", size="5%", pad=0.05)
         clb_ax.set_box_aspect(15)
@@ -137,7 +154,9 @@ class SMorphTanh(SMorph):
             r"$\alpha$: " + f"{self.alpha.squeeze().detach().cpu():.3f}",
             fontsize=20,
         )
-        if comments is not None:
-            axis.set_xlabel(comments, fontsize=20)
+        if target is not None:
+            comments = f"RMSE: {RMSE(filter_.numpy(), target):.3f}\n{comments}"
+
+        axis.set_xlabel(comments, fontsize=20)
 
         return axis

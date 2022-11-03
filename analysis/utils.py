@@ -2,19 +2,20 @@
 
 import os
 import pickle
-from typing import Any, List, Union, Callable, Optional
+from typing import Any, List, Union, Callable, Optional, Iterator, Tuple
 from collections import OrderedDict
 
 import matplotlib.pyplot as plt
 import mlflow
 import numpy as np
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-from mlflow.entities import Run
+from mlflow.entities import Run, RunData
 from matplotlib.axes._axes import Axes
 import pytorch_lightning as pl
 import torch
 
 from models.base import BaseNetwork
+from operations.structuring_elements.base import StructuringElement
 
 
 def get_true_path(path: str) -> str:
@@ -83,6 +84,22 @@ def plot_selem_row(axes: Axes, structuring_elements: List[str]) -> Axes:
     return axes
 
 
+def recreate_target_selem(
+    run: RunData, structuring_element: str
+) -> Optional[np.ndarray]:
+    """Recreate target selem used in given run."""
+    structuring_element_instance = StructuringElement.select(
+        structuring_element,
+        filter_size=int(run.params["filter_size"]),
+        precision=run.params["precision"],
+    )
+
+    try:
+        return structuring_element_instance()
+    except NotImplementedError:
+        return None
+
+
 def filter_runs(
     runs: List[Run],
     model: Union[List[str], str],
@@ -148,6 +165,28 @@ def forward(pl_module: pl.LightningModule, inputs: torch.Tensor) -> OrderedDict:
     return OrderedDict(sorted(modules.items()))
 
 
+def iterate_over_axes(
+    models: List[str],
+    operations: List[str],
+    structuring_elements: List[str],
+    axes: Axes,
+) -> Iterator[Tuple[int, str, int, str, int, str]]:
+    """Iterate over the parameters."""
+    for idx_m, model in enumerate(models):
+        for idx_o, operation in enumerate(operations):
+            axis = axes[1 + idx_m * len(operations) + idx_o, 0]
+            axis.set_ylabel(
+                f"{model}\n\n{operation}",
+                fontsize=30,
+                rotation=0,
+                labelpad=100,
+                va="center",
+            )
+
+            for idx_s, structuring_element in enumerate(structuring_elements):
+                yield idx_m, model, idx_o, operation, idx_s, structuring_element
+
+
 def ploting(  # pylint: disable=too-many-locals,too-many-arguments,unused-argument
     uri: str,
     experiment_name: str,
@@ -184,69 +223,72 @@ def ploting(  # pylint: disable=too-many-locals,too-many-arguments,unused-argume
 
         axes = plot_selem_row(axes, structuring_elements)
 
-        for idx_m, model in enumerate(models):
-            for idx_o, operation in enumerate(operations):
-                axis = axes[1 + idx_m * len(operations) + idx_o, 0]
-                axis.set_ylabel(
-                    f"{model}\n\n{operation}",
-                    fontsize=30,
-                    rotation=0,
-                    labelpad=100,
-                    va="center",
-                )
+        for (
+            idx_m,
+            model,
+            idx_o,
+            operation,
+            idx_s,
+            structuring_element,
+        ) in iterate_over_axes(models, operations, structuring_elements, axes):
+            filtered = filter_runs(
+                runs,
+                model,
+                structuring_element,
+                operation,
+                lambda x, y: x == y,
+            )
+            if len(filtered) == 0:
+                continue
 
-                for idx_s, structuring_element in enumerate(
-                    structuring_elements
-                ):
-                    filtered = filter_runs(
-                        runs,
-                        model,
-                        structuring_element,
-                        operation,
-                        lambda x, y: x == y,
-                    )
-                    if len(filtered) == 0:
+            run = filtered[iteration]
+            target_structuring_element = recreate_target_selem(
+                run.data, structuring_element
+            )
+
+            model_class = BaseNetwork.select_(model)
+            if model_class is None:
+                continue
+
+            path = get_visfile_path(run)
+            pl_module = model_class.load_from_checkpoint(path)
+
+            with open(get_metafile_path(run), "rb") as metafile:
+                inputs = pickle.load(metafile)["inputs"]
+
+                axis = axes[1 + idx_m * len(operations) + idx_o, idx_s]
+                divider = make_axes_locatable(axis)
+                first_layer = True
+
+                modules = forward(pl_module, inputs[0][None, :, :, :]).items()
+
+                comments = ""
+                if "val_loss" in run.data.metrics:
+                    comments = f"Loss: {run.data.metrics['val_loss']:.3e}"
+
+                for (
+                    layer_index,  # pylint: disable=unused-variable
+                    (class_name, plot_method),
+                ) in modules:
+                    if plot_method is None or (
+                        excluded is not None and class_name in excluded
+                    ):
                         continue
 
-                    run = filtered[iteration]
+                    if not first_layer:
+                        axis = divider.append_axes(
+                            "right", size="100%", pad=0.2
+                        )
+                        comments = ""
 
-                    model_class = BaseNetwork.select_(model)
-                    if model_class is None:
-                        continue
-
-                    pl_module = model_class.load_from_checkpoint(
-                        get_visfile_path(run)
-                    )
-
-                    with open(get_metafile_path(run), "rb") as metafile:
-                        inputs = pickle.load(metafile)["inputs"]
-
-                        axis = axes[1 + idx_m * len(operations) + idx_o, idx_s]
-                        divider = make_axes_locatable(axis)
-                        first_layer = True
-
-                        modules = forward(
-                            pl_module, inputs[0][None, :, :, :]
-                        ).items()
-
-                        for (  # pylint: disable=unused-variable
-                            layer_index,
-                            (class_name, plot_method),
-                        ) in modules:
-                            if plot_method is None or (
-                                excluded is not None and class_name in excluded
-                            ):
-                                continue
-
-                            if not first_layer:
-                                axis = divider.append_axes(
-                                    "right", size="100%", pad=0.2
-                                )
-
-                            try:
-                                plot_method(axis=axis)
-                                first_layer = False
-                            except NotImplementedError:
-                                pass
+                    try:
+                        plot_method(
+                            axis=axis,
+                            target=target_structuring_element,
+                            comments=comments,
+                        )
+                        first_layer = False
+                    except NotImplementedError:
+                        pass
 
         plt.show()

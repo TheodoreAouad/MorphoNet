@@ -7,8 +7,10 @@ import torch
 import matplotlib.pyplot as plt
 from matplotlib.axes._axes import Axes
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+import numpy as np
 
 from models.layers import PAD_MODE
+from misc.utils import RMSE
 from .utils import make_pair, init_context, fill_
 from .base import BaseLayer
 
@@ -69,25 +71,31 @@ class PConv(BaseLayer):
         return out - 1.0
 
     def plot_(
-        self, axis: Axes, cmap: str = "plasma", comments: Optional[str] = None
+        self,
+        axis: Axes,
+        cmap: str = "plasma",
+        target: Optional[np.ndarray] = None,
+        comments: str = "",
     ) -> Axes:
         p = self.p.squeeze().detach().cpu()  # pylint: disable=invalid-name
-        if p < 0:
-            cmap = "plasma_r"
 
         axis.invert_yaxis()
         axis.get_yaxis().set_ticks([])
         axis.get_xaxis().set_ticks([])
         axis.set_box_aspect(1)
 
-        plot = axis.pcolormesh(self.filter.squeeze().detach().cpu(), cmap=cmap)
+        filter_ = self.filter.squeeze().detach().cpu()
+
+        plot = axis.pcolormesh(filter_, cmap=cmap)
         divider = make_axes_locatable(axis)
         clb_ax = divider.append_axes("right", size="5%", pad=0.05)
         clb_ax.set_box_aspect(15)
         plt.colorbar(plot, cax=clb_ax)
 
         axis.set_title(r"$p$: " + f"{p:.3f}", fontsize=20)
-        if comments is not None:
-            axis.set_xlabel(comments, fontsize=20)
+        if target is not None:
+            comments = f"RMSE: {RMSE(filter_.numpy(), target):.3f}\n{comments}"
+
+        axis.set_xlabel(comments, fontsize=20)
 
         return axis

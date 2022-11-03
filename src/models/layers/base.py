@@ -3,7 +3,7 @@
 from typing import Optional, Tuple
 from matplotlib.axes._axes import Axes
 from matplotlib.figure import Figure
-
+import numpy as np
 import matplotlib.pyplot as plt
 import pytorch_lightning as pl
 
@@ -12,19 +12,24 @@ class BaseLayer(pl.LightningModule):
     """Base layer containing code shared by all layers."""
 
     def plot_(
-        self, axis: Axes, cmap: str = "plasma", comments: Optional[str] = None
+        self,
+        axis: Axes,
+        cmap: str = "plasma",
+        target: Optional[np.ndarray] = None,
+        comments: str = "",
     ) -> Axes:
         """
         Method specific to each layer that plots its visualization.
         """
         raise NotImplementedError
 
-    def plot(
+    def plot(  # pylint: disable=too-many-arguments
         self,
         figure: Optional[Tuple[Figure, Axes]] = None,
         cmap: str = "plasma",
         path: Optional[str] = None,
-        comments: Optional[str] = None,
+        target: Optional[np.ndarray] = None,
+        comments: str = "",
     ) -> None:
         """
         Function calling implemented `plot_` method while managing figure and
@@ -35,7 +40,7 @@ class BaseLayer(pl.LightningModule):
         else:
             fig, axis = figure
 
-        self.plot_(axis, cmap, comments)
+        self.plot_(axis, cmap, target, comments)
 
         if path is not None:
             fig.savefig(path)

@@ -130,7 +130,7 @@ class VisualizerCallback(
                     plot_method = getattr(module_, "plot")
                     try:
                         path = f"{self.weigths_plots_path}/{index}_{type(module_).__name__.lower()}.png"
-                        plot_method(path=path)
+                        plot_method(path=path, target=self.structuring_element)
                     except NotImplementedError:
                         pass
 

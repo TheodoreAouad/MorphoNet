@@ -18,7 +18,8 @@ def make_pair(object_: Union[int, Tuple[int, int]]) -> Tuple[int, int]:
 def init_context(init_function: Callable, **kwargs: Any) -> None:
     """Wrapper around the init function used to log the used function."""
     init_function(**kwargs)
-    mlflow.log_param(INIT_PARAM, init_function.__name__)
+    if mlflow.active_run() is not None:
+        mlflow.log_param(INIT_PARAM, init_function.__name__)
 
 
 def folded_normal_(
