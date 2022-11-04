@@ -77,7 +77,9 @@ def termination_logs(  # pylint: disable=too-many-arguments
 
     ckpt_path = state_dict["best_model_path"]
     if ckpt_path != "":
-        mlflow.log_metric("best_epoch", int(re.split("/|-|=", ckpt_path)[-3]))
+        mlflow.log_metric(
+            "best_epoch", int(re.split("-|=", ckpt_path.split("/")[-1])[1])
+        )
         mlflow.log_metric("best_score", state_dict["best_model_score"].item())
 
         visualizer.plot_saved_model(
