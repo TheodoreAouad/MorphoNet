@@ -6,6 +6,7 @@ from matplotlib.figure import Figure
 import numpy as np
 import matplotlib.pyplot as plt
 import pytorch_lightning as pl
+from mpl_toolkits.axes_grid1.axes_divider import AxesDivider
 
 
 class BaseLayer(pl.LightningModule):
@@ -17,6 +18,7 @@ class BaseLayer(pl.LightningModule):
         cmap: str = "plasma",
         target: Optional[np.ndarray] = None,
         comments: str = "",
+        divider: Optional[AxesDivider] = None,
     ) -> Axes:
         """
         Method specific to each layer that plots its visualization.
@@ -30,6 +32,7 @@ class BaseLayer(pl.LightningModule):
         path: Optional[str] = None,
         target: Optional[np.ndarray] = None,
         comments: str = "",
+        divider: Optional[AxesDivider] = None,
     ) -> None:
         """
         Function calling implemented `plot_` method while managing figure and
@@ -40,7 +43,7 @@ class BaseLayer(pl.LightningModule):
         else:
             fig, axis = figure
 
-        self.plot_(axis, cmap, target, comments)
+        self.plot_(axis, cmap, target, comments, divider)
 
         if path is not None:
             fig.savefig(path)

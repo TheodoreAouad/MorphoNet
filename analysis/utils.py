@@ -177,7 +177,7 @@ def iterate_over_axes(
             axis = axes[1 + idx_m * len(operations) + idx_o, 0]
             axis.set_ylabel(
                 f"{model}\n\n{operation}",
-                fontsize=30,
+                fontsize=300 / len(model),
                 rotation=0,
                 labelpad=100,
                 va="center",
@@ -258,7 +258,7 @@ def ploting(  # pylint: disable=too-many-locals,too-many-arguments,unused-argume
 
                 axis = axes[1 + idx_m * len(operations) + idx_o, idx_s]
                 divider = make_axes_locatable(axis)
-                first_layer = True
+                plot_index = 0
 
                 modules = forward(pl_module, inputs[0][None, :, :, :]).items()
 
@@ -275,9 +275,9 @@ def ploting(  # pylint: disable=too-many-locals,too-many-arguments,unused-argume
                     ):
                         continue
 
-                    if not first_layer:
+                    if plot_index > 0:
                         axis = divider.append_axes(
-                            "right", size="100%", pad=0.2
+                            "right", size="100%", pad=0.5
                         )
                         comments = ""
 
@@ -286,8 +286,9 @@ def ploting(  # pylint: disable=too-many-locals,too-many-arguments,unused-argume
                             axis=axis,
                             target=target_structuring_element,
                             comments=comments,
+                            divider=divider,
                         )
-                        first_layer = False
+                        plot_index += 1
                     except NotImplementedError:
                         pass
 

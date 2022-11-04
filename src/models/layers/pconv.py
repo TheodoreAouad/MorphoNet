@@ -7,6 +7,7 @@ import torch
 import matplotlib.pyplot as plt
 from matplotlib.axes._axes import Axes
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+from mpl_toolkits.axes_grid1.axes_divider import AxesDivider
 import numpy as np
 
 from models.layers import PAD_MODE
@@ -76,6 +77,7 @@ class PConv(BaseLayer):
         cmap: str = "plasma",
         target: Optional[np.ndarray] = None,
         comments: str = "",
+        divider: Optional[AxesDivider] = None,
     ) -> Axes:
         p = self.p.squeeze().detach().cpu()  # pylint: disable=invalid-name
 
@@ -87,7 +89,8 @@ class PConv(BaseLayer):
         filter_ = self.filter.squeeze().detach().cpu()
 
         plot = axis.pcolormesh(filter_, cmap=cmap)
-        divider = make_axes_locatable(axis)
+        if divider is None:
+            divider = make_axes_locatable(axis)
         clb_ax = divider.append_axes("right", size="5%", pad=0.05)
         clb_ax.set_box_aspect(15)
         plt.colorbar(plot, cax=clb_ax)

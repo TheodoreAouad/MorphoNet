@@ -26,15 +26,14 @@ class Erosion(MorphologicalOperation):
         return ndimage.grey_erosion(image, structure=structuring_element)
 
 
-# TODO check these super calls
 class Opening(Dilation, Erosion):
     """Do an opening on the image."""
 
     def _func(
         self, image: np.ndarray, structuring_element: np.ndarray
     ) -> np.ndarray:
-        eroded = super(Erosion, self)._func(image, structuring_element)
-        dilated = super(Dilation, self)._func(eroded, structuring_element)
+        eroded = Erosion._func(self, image, structuring_element)
+        dilated = Dilation._func(self, eroded, structuring_element)
         return dilated
 
 
@@ -44,8 +43,8 @@ class Closing(Dilation, Erosion):
     def _func(
         self, image: np.ndarray, structuring_element: np.ndarray
     ) -> np.ndarray:
-        dilated = super(Dilation, self)._func(image, structuring_element)
-        eroded = super(Erosion, self)._func(dilated, structuring_element)
+        dilated = Dilation._func(self, image, structuring_element)
+        eroded = Erosion._func(self, dilated, structuring_element)
         return eroded
 
 
@@ -55,7 +54,7 @@ class WTopHat(Opening):
     def _func(
         self, image: np.ndarray, structuring_element: np.ndarray
     ) -> np.ndarray:
-        opened = super(Opening, self)._func(image, structuring_element)
+        opened = Opening._func(self, image, structuring_element)
         return image - opened
 
 
@@ -97,8 +96,8 @@ class BOpening(BDilation, BErosion):
     def _func(
         self, image: np.ndarray, structuring_element: np.ndarray
     ) -> np.ndarray:
-        eroded = super(BErosion, self)._func(image, structuring_element)
-        dilated = super(BDilation, self)._func(eroded, structuring_element)
+        eroded = BErosion._func(self, image, structuring_element)
+        dilated = BDilation._func(self, eroded, structuring_element)
         return dilated
 
 
@@ -108,6 +107,6 @@ class BClosing(BDilation, BErosion):
     def _func(
         self, image: np.ndarray, structuring_element: np.ndarray
     ) -> np.ndarray:
-        dilated = super(BDilation, self)._func(image, structuring_element)
-        eroded = super(BErosion, self)._func(dilated, structuring_element)
+        dilated = BDilation._func(self, image, structuring_element)
+        eroded = BErosion._func(self, dilated, structuring_element)
         return eroded
