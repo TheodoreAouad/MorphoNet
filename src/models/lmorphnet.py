@@ -40,6 +40,7 @@ class LMorphNet(BaseNetwork):
 
         return batch
 
+
 class LMorphNetDouble(BaseNetwork):
     """Network with one LMorph layer."""
 

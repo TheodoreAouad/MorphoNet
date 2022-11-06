@@ -40,6 +40,7 @@ class PConvNet(BaseNetwork):
 
         return batch
 
+
 class PConvNetDouble(BaseNetwork):
     """Network with one PConv layer."""
 

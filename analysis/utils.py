@@ -277,7 +277,7 @@ def ploting(  # pylint: disable=too-many-locals,too-many-arguments,unused-argume
 
                     if plot_index > 0:
                         axis = divider.append_axes(
-                            "right", size="100%", pad=0.5
+                            "right", size="100%", pad=0.3
                         )
                         comments = ""
 
