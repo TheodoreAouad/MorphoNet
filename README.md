@@ -17,18 +17,18 @@ I use [Black](https://black.readthedocs.io/en/stable/), [Mypy](https://mypy.read
 A similar script example can be found in the `run.sh` file.
 
 ```bash
-python -m tasks.train \
-		--filter_size 7\
-		--epochs 1000\
-		--gpu 0\
-		--patience 10\
-		--vis_freq 125\
-        --op dilation\
-		--sel complex\
-		--loss mse\
-		--experiment baseline\
-		smorphnet\
-		mnist ./data/mnist
+$ python -m tasks.train\
+            --filter_size 7\
+            --epochs 1000\
+            --gpu 0\
+            --patience 10\
+            --vis_freq 125\
+            --op dilation\
+            --sel complex\
+            --loss mse\
+            --experiment baseline\
+            smorphnet\
+            mnist ./data/mnist
 ```
 
 I personally use the code in a Python [virtual environment](https://docs.python.org/3/library/venv.html).
@@ -48,4 +48,6 @@ $ tensorboard --log_dir lightning_logs
 
 <br><br><br>
 
-<center>If any questions or remarks, please feel free to contact me!</center>
+<p style="text-align: center;">
+If any questions or remarks, please feel free to contact me!
+</p>
