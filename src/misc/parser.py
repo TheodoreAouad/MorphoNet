@@ -88,7 +88,7 @@ gwtoh_parser = subparsers.add_parser("gwtoh", help="Train on BiWToH")
 gwtoh_parser.add_argument("dataset_path", help="dataset to train on")
 
 fashion_mnist_parser = subparsers.add_parser(
-    "fashion_mnist", help="Train on FashionMNIST"
+    "fashionmnist", help="Train on FashionMNIST"
 )
 fashion_mnist_parser.add_argument("dataset_path", help="dataset to train on")
 
