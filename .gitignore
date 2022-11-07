@@ -7,14 +7,11 @@ dist
 *.egg-info
 env*
 tags
-mnist
-fashion-mnist
+data
 out*
 *log
 compressed
 standard
-run_dsmorph.sh
-sidd
 mlruns
 lightning_logs
 todo/
