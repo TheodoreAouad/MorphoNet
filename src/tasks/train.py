@@ -16,7 +16,7 @@ from mlflow import ActiveRun
 from misc.context import RunContext, Task
 from misc.parser import parser, LOSSES
 from misc.visualizer import VisualizerCallback
-from misc.utils import PRECISIONS_TORCH
+from misc.utils import PRECISIONS_TORCH, plot_grid
 from datasets.base import DataModule
 from models.base import VAL_LOSS, BaseNetwork
 from operations.base import Operation
@@ -59,11 +59,22 @@ def termination_logs(  # pylint: disable=too-many-arguments
     )
     tb_logger.log_graph(model, data_module.sample[0])
     tb_logger.log_hyperparams(vars(args))
-    for idx, (input_image, target_image) in enumerate(
-        zip(data_module.sample[0].cpu(), data_module.sample[1].cpu())
-    ):
-        tb_logger.experiment.add_image(f"Input Sample {idx}", input_image)
-        tb_logger.experiment.add_image(f"Target Sample {idx}", target_image)
+
+    tb_logger.experiment.add_image(
+        "Input Samples",
+        plot_grid(data_module.sample[0].detach().cpu()),
+        dataformats="HWC",
+    )
+    tb_logger.experiment.add_image(
+        "Target Samples",
+        plot_grid(data_module.sample[1].detach().cpu()),
+        dataformats="HWC",
+    )
+    tb_logger.experiment.add_image(
+        "Outputs",
+        plot_grid(model.predict_step(data_module.sample[0], -1).detach().cpu()),
+        dataformats="HWC",
+    )
 
     mlflow.log_param("TB_folder", tb_logger.log_dir)
     mlflow.log_metrics(

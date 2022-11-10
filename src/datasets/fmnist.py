@@ -10,7 +10,9 @@ class FashionMNIST(DataModule):
     """FasionMNIST DataModule."""
 
     def prepare_data(self) -> None:
-        torchvision.datasets.FashionMNIST(self.dataset_path, train=True, download=True)
+        torchvision.datasets.FashionMNIST(
+            self.dataset_path, train=True, download=True
+        )
         torchvision.datasets.FashionMNIST(
             self.dataset_path, train=False, download=True
         )
@@ -30,7 +32,9 @@ class FashionMNIST(DataModule):
             targets=targets,
         )
 
-        val_dataset = torchvision.datasets.FashionMNIST(self.dataset_path, train=False)
+        val_dataset = torchvision.datasets.FashionMNIST(
+            self.dataset_path, train=False
+        )
         inputs_scaled = self.scale(val_dataset.data)
         inputs, targets = self.remodel_data(inputs_scaled, val_dataset.targets)
 

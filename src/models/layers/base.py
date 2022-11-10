@@ -1,16 +1,23 @@
 """Base layer essentially to declare plots functions."""
 
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Any
 from matplotlib.axes._axes import Axes
 from matplotlib.figure import Figure
 import numpy as np
 import matplotlib.pyplot as plt
 import pytorch_lightning as pl
 from mpl_toolkits.axes_grid1.axes_divider import AxesDivider
+import torch
 
 
 class BaseLayer(pl.LightningModule):
     """Base layer containing code shared by all layers."""
+
+    def forward(
+        self, batch: torch.Tensor, *args: Any, **kwargs: Any
+    ) -> torch.Tensor:
+        # pylint: disable=arguments-differ
+        """Forward method of the layer."""
 
     def plot_(
         self,

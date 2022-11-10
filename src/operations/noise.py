@@ -28,31 +28,41 @@ def _random_distribution(
 class Salt(NoiseOperation):
     """Add salt noise to images."""
 
-    def _func(self, image: np.ndarray, percentage: int) -> np.ndarray:
+    def _func(
+        self, image: np.ndarray, percentage: int
+    ) -> Tuple[np.ndarray, np.ndarray]:
         rand = _random_distribution(percentage, size=image.shape)
-        return np.ma.masked_array(image, rand.reshape(image.shape)).filled(
-            np.max(image)
-        )
+        return image, np.ma.masked_array(
+            image, rand.reshape(image.shape)
+        ).filled(1)
 
 
 class Pepper(NoiseOperation):
     """Add pepper noise to images."""
 
-    def _func(self, image: np.ndarray, percentage: int) -> np.ndarray:
+    def _func(
+        self, image: np.ndarray, percentage: int
+    ) -> Tuple[np.ndarray, np.ndarray]:
+        image = 0.5 + image / 2.0
+
         rand = _random_distribution(percentage, size=image.shape)
-        return np.ma.masked_array(image, rand.reshape(image.shape)).filled(
-            np.min(image)
-        )
+        return image, np.ma.masked_array(
+            image, rand.reshape(image.shape)
+        ).filled(0)
 
 
 class SaltPepper(NoiseOperation):
     """Add salt and pepper noise to images."""
 
-    def _func(self, image: np.ndarray, percentage: int) -> np.ndarray:
+    def _func(
+        self, image: np.ndarray, percentage: int
+    ) -> Tuple[np.ndarray, np.ndarray]:
+        image = 0.5 + image / 2.0
+
         rand = _random_distribution(percentage, image.shape, [1, 2])
         arr = np.ma.masked_array(
             image, (rand == 1).reshape(image.shape)
         ).filled(0)
-        return np.ma.masked_array(arr, (rand == 2).reshape(image.shape)).filled(
-            1
-        )
+        return image, np.ma.masked_array(
+            arr, (rand == 2).reshape(image.shape)
+        ).filled(1)

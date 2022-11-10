@@ -154,18 +154,6 @@ class DataModule(pl.LightningDataModule, metaclass=ABCMeta):
 
 # pylint: disable=all
 """
-class FMNISTDataset(Dataset):
-    def __init__(self, precision, dataset_path, train=False, **kwargs):
-        dataset = torchvision.datasets.FashionMNIST(dataset_path, train=train)
-        images = dataset.data.numpy().astype(PRECISIONS_NP[precision])
-        self.targets = dataset.targets.numpy().astype(np.int8)
-
-        images = images[:, np.newaxis, :, :].astype(PRECISIONS_NP[precision])
-        images /= 255.0
-
-        self.inputs = torch.Tensor(images).type(PRECISIONS_TORCH[precision])
-
-
 class BIWTOHDataset(Dataset):
     def __init__(self, precision, dataset_path, train=False, **kwargs):
         dtype = PRECISIONS_NP[precision]

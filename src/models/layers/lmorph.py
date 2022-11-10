@@ -55,7 +55,6 @@ class LMorph(BaseLayer):
     def forward(
         self, batch: torch.Tensor, *args: Any, **kwargs: Any
     ) -> torch.Tensor:
-        # pylint: disable=arguments-differ
         with torch.no_grad():
             self.filter.clamp_min_(0.0)
 

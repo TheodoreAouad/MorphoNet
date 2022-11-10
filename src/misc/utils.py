@@ -3,7 +3,10 @@
 from torch.utils.data import DataLoader
 import torch
 import numpy as np
+import io
 
+import matplotlib.pyplot as plt
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 PRECISIONS_TORCH = {"f32": torch.float32, "f64": torch.float64}
 PRECISIONS_NP = {"f32": "float32", "f64": "float64"}
@@ -42,10 +45,35 @@ def RMSE(array_x: np.ndarray, array_y: np.ndarray) -> float:
     return np.sqrt(sum_ / np.prod(array_x_.shape))
 
 
+def SNR(noised: np.ndarray, target: np.ndarray) -> float:
+    return np.sum(noised**2) / np.sum((target - noised) ** 2)
+
+
 def split_arg(value, mapper=lambda a: a):  # type: ignore
     if value is None:
         return None
     return [mapper(v) for v in value.split(",")]
+
+
+def plot_grid(samples):  # type: ignore
+    fig, axes = plt.subplots(2, 5, figsize=(15, 5))
+    for sample, axis in zip(samples, axes.reshape(-1)):
+        axis.invert_yaxis()
+        axis.get_yaxis().set_ticks([])
+        axis.get_xaxis().set_ticks([])
+        axis.set_box_aspect(1)
+
+        plot = axis.pcolormesh(sample.squeeze(), cmap="plasma")
+        divider = make_axes_locatable(axis)
+        clb_ax = divider.append_axes("right", size="5%", pad=0.05)
+        clb_ax.set_box_aspect(15)
+        plt.colorbar(plot, cax=clb_ax)
+
+    fig.canvas.draw()
+    plt.close(fig)
+
+    image = np.frombuffer(fig.canvas.tostring_rgb(), dtype=np.uint8)
+    return image.reshape(fig.canvas.get_width_height()[::-1] + (3,))
 
 
 def get_data(train_ds, valid_ds, bs):  # type: ignore

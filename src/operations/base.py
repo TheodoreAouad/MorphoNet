@@ -101,18 +101,17 @@ class NoiseOperation(Operation):
     def __call__(
         self, inputs: torch.Tensor, targets: torch.Tensor
     ) -> Tuple[torch.Tensor, torch.Tensor]:
-        targets = inputs
-        inputs = torch.from_numpy(
-            np.array(
-                [
-                    self._func(x.squeeze(), self.percentage)[np.newaxis, ...]
-                    for x in inputs.numpy()
-                ]
-            )
+        results = np.array(
+            [self._func(x.squeeze(), self.percentage) for x in inputs.numpy()]
         )
+
+        targets = torch.from_numpy(results[:, 0])
+        inputs = torch.from_numpy(results[:, 1])
 
         return fit_NCHW(inputs), fit_NCHW(targets)
 
     @abstractmethod
-    def _func(self, image: np.ndarray, percentage: int) -> np.ndarray:
-        """Function returning the noised image."""
+    def _func(
+        self, image: np.ndarray, percentage: int
+    ) -> Tuple[np.ndarray, np.ndarray]:
+        """Function returning the clear and noised images."""

@@ -55,7 +55,6 @@ class SMorph(BaseLayer):
     def forward(
         self, batch: torch.Tensor, *args: Any, **kwargs: Any
     ) -> torch.Tensor:
-        # pylint: disable=arguments-differ
         input_padded = nn.functional.pad(batch, self.pad, mode=PAD_MODE)
 
         unfolder_ = nn.Unfold(kernel_size=self.filter_shape)
@@ -116,7 +115,6 @@ class SMorphTanh(SMorph):
     def forward(
         self, batch: torch.Tensor, *args: Any, **kwargs: Any
     ) -> torch.Tensor:
-        # pylint: disable=arguments-differ
         input_padded = nn.functional.pad(batch, self.pad, mode=PAD_MODE)
 
         unfolder_ = nn.Unfold(kernel_size=self.filter_shape)
