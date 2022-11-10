@@ -9,7 +9,7 @@ import sys
 import numpy as np
 import torch
 
-from misc.utils import fit_NCHW
+from misc.utils import fit_nchw
 from .structuring_elements import StructuringElement
 
 
@@ -81,7 +81,7 @@ class MorphologicalOperation(Operation):
             )
         )
 
-        return fit_NCHW(inputs), fit_NCHW(targets)
+        return fit_nchw(inputs), fit_nchw(targets)
 
     @abstractmethod
     def _func(
@@ -108,7 +108,7 @@ class NoiseOperation(Operation):
         targets = torch.from_numpy(results[:, 0])
         inputs = torch.from_numpy(results[:, 1])
 
-        return fit_NCHW(inputs), fit_NCHW(targets)
+        return fit_nchw(inputs), fit_nchw(targets)
 
     @abstractmethod
     def _func(

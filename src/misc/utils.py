@@ -1,29 +1,24 @@
 """Utility functions."""
 
-from torch.utils.data import DataLoader
 import torch
 import numpy as np
-import io
-
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+import torchvision
 
 PRECISIONS_TORCH = {"f32": torch.float32, "f64": torch.float64}
 PRECISIONS_NP = {"f32": "float32", "f64": "float64"}
 
-# TODO do something with this file
-# pylint: disable=all
-import torchvision
-import torch
 
-
-def fit_NCHW(tensor: torch.Tensor, include_c: bool = False) -> torch.Tensor:
-    return torchvision.transforms.Lambda(lambda x: _fit_NCHW(x, include_c))(
+def fit_nchw(tensor: torch.Tensor, include_c: bool = False) -> torch.Tensor:
+    """Change tensor to NCHV format."""
+    return torchvision.transforms.Lambda(lambda x: _fit_nchw(x, include_c))(
         tensor
     )
 
 
-def _fit_NCHW(tensor: torch.Tensor, include_c: bool = False) -> torch.Tensor:
+def _fit_nchw(tensor: torch.Tensor, include_c: bool = False) -> torch.Tensor:
+    """Change tensor to NCHV format (helper)."""
     if len(tensor.size()) == 4:
         return tensor  # Already in NCHW format
 
@@ -36,7 +31,8 @@ def _fit_NCHW(tensor: torch.Tensor, include_c: bool = False) -> torch.Tensor:
     return tensor[:, None, :, :]  # 2D data with N samples (N, C, W)
 
 
-def RMSE(array_x: np.ndarray, array_y: np.ndarray) -> float:
+def rmse(array_x: np.ndarray, array_y: np.ndarray) -> float:
+    """Calculate RMSE between two arrays."""
     array_x_ = (array_x - np.min(array_x)) / (np.max(array_x) - np.min(array_x))
     array_y_ = (array_y - np.min(array_y)) / (np.max(array_y) - np.min(array_y))
 
@@ -45,17 +41,13 @@ def RMSE(array_x: np.ndarray, array_y: np.ndarray) -> float:
     return np.sqrt(sum_ / np.prod(array_x_.shape))
 
 
-def SNR(noised: np.ndarray, target: np.ndarray) -> float:
+def snr(noised: np.ndarray, target: np.ndarray) -> float:
+    """Calculate SNR between two arrays."""
     return np.sum(noised**2) / np.sum((target - noised) ** 2)
 
 
-def split_arg(value, mapper=lambda a: a):  # type: ignore
-    if value is None:
-        return None
-    return [mapper(v) for v in value.split(",")]
-
-
-def plot_grid(samples):  # type: ignore
+def plot_grid(samples: np.ndarray) -> np.ndarray:
+    """Plot grid image with given samples. Return the figure as an image."""
     fig, axes = plt.subplots(2, 5, figsize=(15, 5))
     for sample, axis in zip(samples, axes.reshape(-1)):
         axis.invert_yaxis()
@@ -76,41 +68,12 @@ def plot_grid(samples):  # type: ignore
     return image.reshape(fig.canvas.get_width_height()[::-1] + (3,))
 
 
-def get_data(train_ds, valid_ds, bs):  # type: ignore
-    return (
-        DataLoader(train_ds, batch_size=bs, shuffle=True),
-        DataLoader(valid_ds, batch_size=bs * 2),
-    )
-
-
-def pad_inputs(x, model_name, filter_padding, pad_value=0):  # type: ignore
-    if "double" in model_name:
-        filter_padding *= 2
-    elif "five" in model_name:
-        filter_padding *= 5
-    elif "four" in model_name:
-        filter_padding *= 4
-
-    padded = np.pad(
-        x,
-        (
-            (0, 0),
-            (0, 0),
-            (filter_padding, filter_padding),
-            (filter_padding, filter_padding),
-        ),
-        mode="constant",
-        constant_values=(pad_value,),
-    )
-
-    return padded
-
-
-def make_patches(data_shape, patch_shape):  # type: ignore
+# TODO do something with the following functions, prev. used for sidd
+def make_patches(data_shape, patch_shape):  # type: ignore # pylint: disable=missing-function-docstring
     patch_shape = np.array(patch_shape)
     data_shape = np.array(data_shape)
     n_patches = np.ceil(data_shape / patch_shape)
-    x, y = np.mgrid[
+    x, y = np.mgrid[  # pylint: disable=invalid-name
         0 : data_shape[0] - patch_shape[0] : n_patches[0] * 1j,
         0 : data_shape[1] - patch_shape[1] : n_patches[1] * 1j,
     ]
@@ -121,7 +84,7 @@ def make_patches(data_shape, patch_shape):  # type: ignore
     ]
 
 
-def reconstruct_patches(data_patches, patches, data_shape):  # type: ignore
+def reconstruct_patches(data_patches, patches, data_shape):  # type: ignore # pylint: disable=missing-function-docstring
     data = np.zeros(data_shape, dtype=data_patches.dtype)
     count = np.zeros(data_shape, dtype=data_patches.dtype)
     for data_patch, patch in zip(data_patches, patches):
@@ -129,322 +92,3 @@ def reconstruct_patches(data_patches, patches, data_shape):  # type: ignore
         count[patch] += 1
     data = data / count
     return data
-
-
-import random
-
-
-def _generate_string(sep, integer_scale):  # type: ignore
-
-    predicate = random.choice(_GENERATOR_PREDICATES).lower()
-    noun = random.choice(_GENERATOR_NOUNS).lower()
-    num = random.randint(0, 10**integer_scale)
-    return f"{predicate}{sep}{noun}{sep}{num}"
-
-
-def _generate_random_name(sep="-", integer_scale=3, max_length=20):  # type: ignore
-    """Helper function for generating a random predicate, noun, and integer combination
-
-    :param sep: String seperator for word spacing
-    :param integer_scale: dictates the maximum scale range for random integer sampling (power of 10)
-    :param max_length: maximum allowable string length
-
-    :return: A random string phrase comprised of a predicate, noun, and random integer
-    """
-    name = None
-    for _ in range(10):
-        name = _generate_string(sep, integer_scale)
-        if len(name) <= max_length:
-            return name
-    # If the combined length isn't below the threshold after 10 iterations, truncate it.
-    return name[:max_length]
-
-
-_GENERATOR_NOUNS = [
-    "ant",
-    "ape",
-    "asp",
-    "auk",
-    "bass",
-    "bat",
-    "bear",
-    "bee",
-    "bird",
-    "boar",
-    "bug",
-    "calf",
-    "carp",
-    "cat",
-    "chick",
-    "chimp",
-    "cod",
-    "colt",
-    "conch",
-    "cow",
-    "crab",
-    "crane",
-    "croc",
-    "crow",
-    "cub",
-    "deer",
-    "doe",
-    "dog",
-    "dolphin",
-    "donkey",
-    "dove",
-    "duck",
-    "eel",
-    "elk",
-    "fawn",
-    "finch",
-    "fish",
-    "flea",
-    "fly",
-    "foal",
-    "fowl",
-    "fox",
-    "frog",
-    "gnat",
-    "gnu",
-    "goat",
-    "goose",
-    "grouse",
-    "grub",
-    "gull",
-    "hare",
-    "hawk",
-    "hen",
-    "hog",
-    "horse",
-    "hound",
-    "jay",
-    "kit",
-    "kite",
-    "koi",
-    "lamb",
-    "lark",
-    "loon",
-    "lynx",
-    "mare",
-    "midge",
-    "mink",
-    "mole",
-    "moose",
-    "moth",
-    "mouse",
-    "mule",
-    "newt",
-    "owl",
-    "ox",
-    "panda",
-    "penguin",
-    "perch",
-    "pig",
-    "pug",
-    "quail",
-    "ram",
-    "rat",
-    "ray",
-    "robin",
-    "roo",
-    "rook",
-    "seal",
-    "shad",
-    "shark",
-    "sheep",
-    "shoat",
-    "shrew",
-    "shrike",
-    "shrimp",
-    "skink",
-    "skunk",
-    "sloth",
-    "slug",
-    "smelt",
-    "snail",
-    "snake",
-    "snipe",
-    "sow",
-    "sponge",
-    "squid",
-    "squirrel",
-    "stag",
-    "steed",
-    "stoat",
-    "stork",
-    "swan",
-    "tern",
-    "toad",
-    "trout",
-    "turtle",
-    "vole",
-    "wasp",
-    "whale",
-    "wolf",
-    "worm",
-    "wren",
-    "yak",
-    "zebra",
-]
-
-_GENERATOR_PREDICATES = [
-    "abundant",
-    "able",
-    "abrasive",
-    "adorable",
-    "adaptable",
-    "adventurous",
-    "aged",
-    "agreeable",
-    "ambitious",
-    "amazing",
-    "amusing",
-    "angry",
-    "auspicious",
-    "awesome",
-    "bald",
-    "beautiful",
-    "bemused",
-    "bedecked",
-    "big",
-    "bittersweet",
-    "blushing",
-    "bold",
-    "bouncy",
-    "brawny",
-    "bright",
-    "burly",
-    "bustling",
-    "calm",
-    "capable",
-    "carefree",
-    "capricious",
-    "caring",
-    "casual",
-    "charming",
-    "chill",
-    "classy",
-    "clean",
-    "clumsy",
-    "colorful",
-    "crawling",
-    "dapper",
-    "debonair",
-    "dashing",
-    "defiant",
-    "delicate",
-    "delightful",
-    "dazzling",
-    "efficient",
-    "enchanting",
-    "entertaining",
-    "enthused",
-    "exultant",
-    "fearless",
-    "flawless",
-    "fortunate",
-    "fun",
-    "funny",
-    "gaudy",
-    "gentle",
-    "gifted",
-    "glamorous",
-    "grandiose",
-    "gregarious",
-    "handsome",
-    "hilarious",
-    "honorable",
-    "illustrious",
-    "incongruous",
-    "indecisive",
-    "industrious",
-    "intelligent",
-    "inquisitive",
-    "intrigued",
-    "invincible",
-    "judicious",
-    "kindly",
-    "languid",
-    "learned",
-    "legendary",
-    "likeable",
-    "loud",
-    "luminous",
-    "luxuriant",
-    "lyrical",
-    "magnificent",
-    "marvelous",
-    "masked",
-    "melodic",
-    "merciful",
-    "mercurial",
-    "monumental",
-    "mysterious",
-    "nebulous",
-    "nervous",
-    "nimble",
-    "nosy",
-    "omniscient",
-    "orderly",
-    "overjoyed",
-    "peaceful",
-    "painted",
-    "persistent",
-    "placid",
-    "polite",
-    "popular",
-    "powerful",
-    "puzzled",
-    "rambunctious",
-    "rare",
-    "rebellious",
-    "respected",
-    "resilient",
-    "righteous",
-    "receptive",
-    "redolent",
-    "resilient",
-    "rogue",
-    "rumbling",
-    "salty",
-    "sassy",
-    "secretive",
-    "selective",
-    "sedate",
-    "serious",
-    "shivering",
-    "skillful",
-    "sincere",
-    "skittish",
-    "silent",
-    "smiling",
-    "sneaky",
-    "sophisticated",
-    "spiffy",
-    "stately",
-    "suave",
-    "stylish",
-    "tasteful",
-    "thoughtful",
-    "thundering",
-    "traveling",
-    "treasured",
-    "trusting",
-    "unequaled",
-    "upset",
-    "unique",
-    "unleashed",
-    "useful",
-    "upbeat",
-    "unruly",
-    "valuable",
-    "vaunted",
-    "victorious",
-    "welcoming",
-    "whimsical",
-    "wistful",
-    "wise",
-    "worried",
-    "youthful",
-    "zealous",
-]

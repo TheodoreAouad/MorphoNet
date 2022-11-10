@@ -11,7 +11,7 @@ from mpl_toolkits.axes_grid1.axes_divider import AxesDivider
 import numpy as np
 
 from models.layers import PAD_MODE
-from misc.utils import RMSE
+from misc.utils import rmse
 from .utils import make_pair, init_context, fill_
 from .base import BaseLayer
 
@@ -96,7 +96,7 @@ class PConv(BaseLayer):
 
         axis.set_title(r"$p$: " + f"{p:.3f}", fontsize=20)
         if target is not None:
-            comments = f"RMSE: {RMSE(filter_.numpy(), target):.3f}\n{comments}"
+            comments = f"RMSE: {rmse(filter_.numpy(), target):.3f}\n{comments}"
 
         axis.set_xlabel(comments, fontsize=20)
 

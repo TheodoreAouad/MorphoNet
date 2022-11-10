@@ -9,7 +9,7 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 from mpl_toolkits.axes_grid1.axes_divider import AxesDivider
 import numpy as np
 
-from misc.utils import RMSE
+from misc.utils import rmse
 from .utils import make_pair, init_context, folded_normal_
 from .base import BaseLayer
 
@@ -106,7 +106,7 @@ class LMorph(BaseLayer):
 
         axis.set_title(r"$p$: " + f"{p:.3f}", fontsize=20)
         if target is not None:
-            rmse = RMSE(filter_.numpy() * invert, target)
+            rmse = rmse(filter_.numpy() * invert, target)
             comments = f"RMSE: {rmse:.3f}\n{comments}"
 
         axis.set_xlabel(comments, fontsize=20)

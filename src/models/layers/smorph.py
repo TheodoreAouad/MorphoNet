@@ -10,7 +10,7 @@ from matplotlib.axes._axes import Axes
 import numpy as np
 
 from models.layers import PAD_MODE
-from misc.utils import RMSE
+from misc.utils import rmse
 from .utils import init_context, folded_normal_
 from .base import BaseLayer
 
@@ -100,7 +100,7 @@ class SMorph(BaseLayer):
 
         axis.set_title(r"$\alpha$: " + f"{alpha:.3f}", fontsize=20)
         if target is not None:
-            rmse = RMSE(filter_.numpy() * invert, target)
+            rmse = rmse(filter_.numpy() * invert, target)
             comments = f"RMSE: {rmse:.3f}\n{comments}"
 
         axis.set_xlabel(comments, fontsize=20)
@@ -158,7 +158,7 @@ class SMorphTanh(SMorph):
             fontsize=20,
         )
         if target is not None:
-            comments = f"RMSE: {RMSE(filter_.numpy(), target):.3f}\n{comments}"
+            comments = f"RMSE: {rmse(filter_.numpy(), target):.3f}\n{comments}"
 
         axis.set_xlabel(comments, fontsize=20)
 
