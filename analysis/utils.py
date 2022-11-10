@@ -287,7 +287,7 @@ def ploting(  # pylint: disable=too-many-locals,too-many-arguments,unused-argume
 def plot_image(
     axis: Axes,
     image: torch.Tensor,
-    percentage: str,
+    percentage: Optional[str] = None,
     target: Optional[torch.Tensor] = None,
     divider: Optional[AxesDivider] = None,
     comments: str = "",
@@ -305,7 +305,8 @@ def plot_image(
     clb_ax.set_box_aspect(15)
     plt.colorbar(plot, cax=clb_ax)
 
-    axis.set_title(f"{percentage}%", fontsize=20)
+    if percentage is not None:
+        axis.set_title(f"{percentage}%", fontsize=20)
     if target is not None:
         snr_ = snr(image.numpy(), target.numpy())
         comments = f"SNR: {snr_:.3f}\n{comments}"
@@ -346,26 +347,11 @@ def ploting_noise_results(  # pylint: disable=too-many-locals,too-many-arguments
             axes = np.array([axes]).T
 
         for idx_p, percentage in enumerate(percentages):
-            with open(get_metafile_path(runs[0]), "rb") as metafile:
-                input_ = pickle.load(metafile)["inputs"][0, 0]
-
-            divider = make_axes_locatable(axes[0, idx_p])
-            plot_image(
-                axes[0, idx_p],
-                input_,
-                percentage,
-                divider=divider,
-                comments=operation,
-            )
-
             for idx_m, model in enumerate(models):
-                axes[1 + idx_m, 0].set_ylabel(
-                    model,
-                    fontsize=300 / len(model),
-                    rotation=0,
-                    labelpad=100,
-                    va="center",
-                )
+                model_class = BaseNetwork.select_(model)
+                if model_class is None:
+                    continue
+
                 filtered = filter_runs(
                     runs,
                     {
@@ -378,12 +364,30 @@ def ploting_noise_results(  # pylint: disable=too-many-locals,too-many-arguments
                     continue
 
                 run = filtered[iteration]
-                with open(get_metafile_path(run), "rb") as metafile:
-                    target = pickle.load(metafile)["targets"][0, 0]
 
-                model_class = BaseNetwork.select_(model)
-                if model_class is None:
-                    continue
+                with open(get_metafile_path(run), "rb") as metafile:
+                    data = pickle.load(metafile)
+                    target = data["targets"][0, 0]
+                    input_ = data["inputs"][0, 0]
+
+                if idx_p == 0:
+                    axes[1 + idx_m, 0].set_ylabel(
+                        model,
+                        fontsize=300 / len(model),
+                        rotation=0,
+                        labelpad=100,
+                        va="center",
+                    )
+
+                if idx_m == 0:
+                    divider = make_axes_locatable(axes[0, idx_p])
+                    plot_image(
+                        axes[0, idx_p],
+                        input_,
+                        percentage,
+                        divider=divider,
+                        comments=operation,
+                    )
 
                 path = get_visfile_path(run)
                 pl_module = model_class.load_from_checkpoint(path)
@@ -394,6 +398,6 @@ def ploting_noise_results(  # pylint: disable=too-many-locals,too-many-arguments
                 result = pl_module.predict_step(
                     input_[None, None, :, :], -1
                 ).detach()
-                plot_image(axis, result[0, 0], percentage, target, divider)
+                plot_image(axis, result[0, 0], target=target, divider=divider)
 
     plt.show()
