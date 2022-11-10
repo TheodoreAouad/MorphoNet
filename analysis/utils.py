@@ -307,8 +307,8 @@ def plot_image(
 
     axis.set_title(f"{percentage}%", fontsize=20)
     if target is not None:
-        snr = snr(image.numpy(), target.numpy())
-        comments = f"SNR: {snr:.3f}\n{comments}"
+        snr_ = snr(image.numpy(), target.numpy())
+        comments = f"SNR: {snr_:.3f}\n{comments}"
 
     axis.set_xlabel(comments, fontsize=20)
 

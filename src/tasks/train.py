@@ -62,17 +62,19 @@ def termination_logs(  # pylint: disable=too-many-arguments
 
     tb_logger.experiment.add_image(
         "Input Samples",
-        plot_grid(data_module.sample[0].detach().cpu()),
+        plot_grid(data_module.sample[0].detach().cpu().numpy()),
         dataformats="HWC",
     )
     tb_logger.experiment.add_image(
         "Target Samples",
-        plot_grid(data_module.sample[1].detach().cpu()),
+        plot_grid(data_module.sample[1].detach().cpu().numpy()),
         dataformats="HWC",
     )
     tb_logger.experiment.add_image(
         "Outputs",
-        plot_grid(model.predict_step(data_module.sample[0], -1).detach().cpu()),
+        plot_grid(
+            model.predict_step(data_module.sample[0], -1).detach().cpu().numpy()
+        ),
         dataformats="HWC",
     )
 

@@ -100,8 +100,8 @@ class SMorph(BaseLayer):
 
         axis.set_title(r"$\alpha$: " + f"{alpha:.3f}", fontsize=20)
         if target is not None:
-            rmse = rmse(filter_.numpy() * invert, target)
-            comments = f"RMSE: {rmse:.3f}\n{comments}"
+            rmse_ = rmse(filter_.numpy() * invert, target)
+            comments = f"RMSE: {rmse_:.3f}\n{comments}"
 
         axis.set_xlabel(comments, fontsize=20)
 
