@@ -3,11 +3,13 @@ from unittest.mock import MagicMock
 
 from models.layers.smorph import SMorph, SMorphTanh
 
-@pytest.mark.parametrize("class_",
+
+@pytest.mark.parametrize(
+    "class_",
     [
         SMorph,
         SMorphTanh,
-    ]
+    ],
 )
 def test_init(class_, monkeypatch):
     init_mock = MagicMock()

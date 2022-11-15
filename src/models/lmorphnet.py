@@ -1,6 +1,6 @@
 """One layer network with LMorph function."""
 
-from typing import Union, Tuple, Callable, Any
+from typing import Callable, Any
 import torch
 
 from .base import BaseNetwork

@@ -1,4 +1,14 @@
-from operations.morphology import Dilation, Erosion, Opening, Closing, WTopHat, BDilation, BErosion, BClosing, BOpening
+from operations.morphology import (
+    Dilation,
+    Erosion,
+    Opening,
+    Closing,
+    WTopHat,
+    BDilation,
+    BErosion,
+    BClosing,
+    BOpening,
+)
 from operations.structuring_elements import Complex, BDiamond
 from pytest import fixture
 from pathlib import Path
@@ -10,9 +20,11 @@ from unittest.mock import MagicMock
 def path(name):
     return Path(__file__).parent / "data" / f"{name}"
 
+
 @fixture
 def structuring_element():
     return Complex(filter_size=7, precision="f64")
+
 
 @fixture
 def binary_structuring_element():
@@ -56,6 +68,7 @@ def test_erosion_batch(structuring_element):
     torch.testing.assert_close(expected_result, targets)
     torch.testing.assert_close(images, inputs)
 
+
 def test_opening(structuring_element):
     images = torch.load(path("inputs_erosion.pt"))
     expected_result = torch.load(path("targets_opening.pt"))
@@ -64,7 +77,8 @@ def test_opening(structuring_element):
 
     torch.testing.assert_close(expected_result, targets)
     torch.testing.assert_close(images, inputs)
-    
+
+
 def test_closing(structuring_element):
     images = torch.load(path("inputs_dilation.pt"))
     expected_result = torch.load(path("targets_closing.pt"))
@@ -73,6 +87,7 @@ def test_closing(structuring_element):
 
     torch.testing.assert_close(expected_result, targets)
     torch.testing.assert_close(images, inputs)
+
 
 def test_wtophat(structuring_element):
     images = torch.load(path("inputs_erosion.pt"))
@@ -83,6 +98,7 @@ def test_wtophat(structuring_element):
     torch.testing.assert_close(expected_result, targets)
     torch.testing.assert_close(images, inputs)
 
+
 def test_bdilation(binary_structuring_element):
     image = np.load(path("input_bdilation.npy"))
     expected_result = np.load(path("target_bdilation.npy"))
@@ -90,16 +106,20 @@ def test_bdilation(binary_structuring_element):
     result = BDilation._func(MagicMock(), image, binary_structuring_element())
 
     torch.testing.assert_close(expected_result, result)
-    
+
+
 def test_bdilation_batch(binary_structuring_element):
     images = torch.load(path("inputs_dilation.pt"))
     target_inputs = torch.load(path("target_bdilation_inputs.pt"))
     expected_result = torch.load(path("targets_bdilation.pt"))
 
-    inputs, targets = BDilation(binary_structuring_element)(images, torch.empty(0))
+    inputs, targets = BDilation(binary_structuring_element)(
+        images, torch.empty(0)
+    )
 
     torch.testing.assert_close(expected_result, targets)
     torch.testing.assert_close(target_inputs, inputs)
+
 
 def test_berosion(binary_structuring_element):
     image = np.load(path("input_berosion.npy"))
@@ -109,22 +129,28 @@ def test_berosion(binary_structuring_element):
 
     torch.testing.assert_close(expected_result, result)
 
+
 def test_berosion_batch(binary_structuring_element):
     images = torch.load(path("inputs_erosion.pt"))
     target_inputs = torch.load(path("target_berosion_inputs.pt"))
     expected_result = torch.load(path("targets_berosion.pt"))
 
-    inputs, targets = BErosion(binary_structuring_element)(images, torch.empty(0))
+    inputs, targets = BErosion(binary_structuring_element)(
+        images, torch.empty(0)
+    )
 
     torch.testing.assert_close(expected_result, targets)
     torch.testing.assert_close(target_inputs, inputs)
+
 
 def test_bopening(binary_structuring_element):
     images = torch.load(path("inputs_erosion.pt"))
     target_inputs = torch.load(path("target_berosion_inputs.pt"))
     expected_result = torch.load(path("targets_bopening.pt"))
 
-    inputs, targets = BOpening(binary_structuring_element)(images, torch.empty(0))
+    inputs, targets = BOpening(binary_structuring_element)(
+        images, torch.empty(0)
+    )
 
     torch.testing.assert_close(expected_result, targets)
     torch.testing.assert_close(target_inputs, inputs)
@@ -135,7 +161,9 @@ def test_bclosing(binary_structuring_element):
     target_inputs = torch.load(path("target_bdilation_inputs.pt"))
     expected_result = torch.load(path("targets_bclosing.pt"))
 
-    inputs, targets = BClosing(binary_structuring_element)(images, torch.empty(0))
+    inputs, targets = BClosing(binary_structuring_element)(
+        images, torch.empty(0)
+    )
 
     torch.testing.assert_close(expected_result, targets)
     torch.testing.assert_close(target_inputs, inputs)

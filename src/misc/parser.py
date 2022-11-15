@@ -11,6 +11,8 @@ from datasets.base import DataModule
 
 
 class Parser(argparse.ArgumentParser):
+    """Parser for the training arguments."""
+
     def __init__(self) -> None:
         super().__init__(description="Train a model.")
 
@@ -44,7 +46,10 @@ class Parser(argparse.ArgumentParser):
         )
 
         self.add_argument(
-            "--epochs", type=int, default=100, help="number of epochs to train for"
+            "--epochs",
+            type=int,
+            default=100,
+            help="number of epochs to train for",
         )
         self.add_argument(
             "--patience",
@@ -53,9 +58,14 @@ class Parser(argparse.ArgumentParser):
             help="number of epochs to continue training for with no improvement to validation loss",
         )
 
-        self.add_argument("--batch_size", type=int, default=32, help="batch size")
         self.add_argument(
-            "--validation_split", type=float, default=0.1, help="validation split"
+            "--batch_size", type=int, default=32, help="batch size"
+        )
+        self.add_argument(
+            "--validation_split",
+            type=float,
+            default=0.1,
+            help="validation split",
         )
 
         self.add_argument(
@@ -80,7 +90,11 @@ class Parser(argparse.ArgumentParser):
             help="Name of the MLflow experiment",
         )
 
-        subparsers = self.add_subparsers(help="Dataset to train on", dest="dataset", parser_class=argparse.ArgumentParser)
+        subparsers = self.add_subparsers(
+            help="Dataset to train on",
+            dest="dataset",
+            parser_class=argparse.ArgumentParser,
+        )
 
         for dataset_name in DataModule.listing():
             print(dataset_name)
@@ -88,11 +102,17 @@ class Parser(argparse.ArgumentParser):
             if class_ is None:
                 continue
 
-            dataset_parser = subparsers.add_parser(dataset_name, help=f"Train on {class_.__name__}")
-            dataset_parser.add_argument("dataset_path", help="dataset to train on")
+            dataset_parser = subparsers.add_parser(
+                dataset_name, help=f"Train on {class_.__name__}"
+            )
+            dataset_parser.add_argument(
+                "dataset_path", help="dataset to train on"
+            )
 
         sidd_parser = subparsers.add_parser("sidd", help="Train on sidd")
-        sidd_parser.add_argument("dataset_path", nargs=1, help="dataset to train on")
+        sidd_parser.add_argument(
+            "dataset_path", nargs=1, help="dataset to train on"
+        )
         sidd_parser.add_argument(
             "--patch_size",
             type=int,

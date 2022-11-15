@@ -2,7 +2,6 @@
 
 from typing import Callable, Any
 import torch
-import torch.nn as nn
 
 from .base import BaseNetwork
 from .layers.scale_bias import ScaleBias
@@ -171,7 +170,7 @@ class SMorphNetWTH(BaseNetwork, metaclass=NotTested):
             in_channels=1, out_channels=1, filter_size=filter_size, **kwargs
         )
         self.sb1 = ScaleBias(num_features=1, **kwargs)
-        self.lmbda = nn.Parameter(torch.empty((1), **kwargs))
+        self.lmbda = torch.nn.Parameter(torch.empty((1), **kwargs))
 
     def forward(
         self, batch: torch.Tensor, *args: Any, **kwargs: Any

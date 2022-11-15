@@ -1,19 +1,49 @@
 from operations.structuring_elements import Complex, Cross3, Cross5, Cross7
-from operations.structuring_elements.base import Disk, Diskaa, Diamond, Diamondaa, Empty, DoubleDisk9, StructuringElement
+from operations.structuring_elements.base import (
+    Disk,
+    Diskaa,
+    Diamond,
+    Diamondaa,
+    Empty,
+    DoubleDisk9,
+    StructuringElement,
+)
 import pytest
 from pathlib import Path
 import numpy as np
 from unittest.mock import MagicMock
 
-from operations.structuring_elements.structuring_elements import Diamondaa3, Diskaa2, Diskaa3, Disk2, Rand, BComplex, BSquare, BDiamond, DoubleDisk92, DoubleDisk91, DoubleDisk70, DoubleDisk71, Diag, ADiag, SIADiag, IADiag, Diskaa1
+from operations.structuring_elements.structuring_elements import (
+    Diamondaa3,
+    Diskaa2,
+    Diskaa3,
+    Disk2,
+    Rand,
+    BComplex,
+    BSquare,
+    BDiamond,
+    DoubleDisk92,
+    DoubleDisk91,
+    DoubleDisk70,
+    DoubleDisk71,
+    Diag,
+    ADiag,
+    SIADiag,
+    IADiag,
+    Diskaa1,
+)
 
 
 def get_expected_path(class_, radius):
-    return Path(__file__).parent / "data" / f"{class_.__name__.lower()}_{radius}.npy"
+    return (
+        Path(__file__).parent
+        / "data"
+        / f"{class_.__name__.lower()}_{radius}.npy"
+    )
 
 
-
-@pytest.mark.parametrize("class_, radius",
+@pytest.mark.parametrize(
+    "class_, radius",
     [
         (Disk, 1),
         (Disk, 3),
@@ -27,18 +57,20 @@ def get_expected_path(class_, radius):
         (Diamondaa, 1),
         (Diamondaa, 3),
         (Diamondaa, 5),
-    ]
+    ],
 )
 def test_draw_abstract(class_, radius):
-    #TODO assert type also
+    # TODO assert type also
     path = get_expected_path(class_, radius)
     expected_tructuring_element = np.load(path)
     np.testing.assert_array_equal(
-        expected_tructuring_element, class_._draw(MagicMock(dtype=np.float64), radius)
+        expected_tructuring_element,
+        class_._draw(MagicMock(dtype=np.float64), radius),
     )
 
 
-@pytest.mark.parametrize("class_",
+@pytest.mark.parametrize(
+    "class_",
     [
         Complex,
         Cross3,
@@ -60,7 +92,7 @@ def test_draw_abstract(class_, radius):
         SIADiag,
         IADiag,
         Diskaa1,
-    ]
+    ],
 )
 def test_instanciate(class_):
     filter_size = 7
@@ -69,8 +101,10 @@ def test_instanciate(class_):
     path = get_expected_path(class_, filter_size)
     expected_tructuring_element = np.load(path)
     np.testing.assert_array_equal(
-        expected_tructuring_element, structuring_element,
+        expected_tructuring_element,
+        structuring_element,
     )
+
 
 def test_empty():
     structuring_element = Empty()
@@ -85,11 +119,12 @@ def test_empty():
     assert structuring_element.dtype == "float64"
 
 
-@pytest.mark.parametrize("name, expected_class, kwargs",
+@pytest.mark.parametrize(
+    "name, expected_class, kwargs",
     [
         ("complex", Complex, {"filter_size": 7, "precision": "f64"}),
         ("diskaa2", Diskaa2, {"filter_size": 7, "precision": "f64"}),
-    ]
+    ],
 )
 def test_select(name, expected_class, kwargs):
     expected = expected_class(**kwargs)
@@ -99,9 +134,8 @@ def test_select(name, expected_class, kwargs):
     assert expected.dtype == result.dtype
     assert expected.filter_shape == result.filter_shape
 
-    np.testing.assert_array_equal(
-        expected(), result()
-    )
+    np.testing.assert_array_equal(expected(), result())
+
 
 def test_select_neg():
     expected = Empty()
@@ -111,16 +145,19 @@ def test_select_neg():
     assert expected.dtype == result.dtype
     assert expected.filter_shape == result.filter_shape
 
-@pytest.mark.parametrize("name, expected_class",
+
+@pytest.mark.parametrize(
+    "name, expected_class",
     [
         ("complex", Complex),
         ("donotexist", None),
-    ]
+    ],
 )
 def test_select_(name, expected_class):
     result = StructuringElement.select_(name)
 
     assert result == expected_class
+
 
 def test_listing():
     expected = {
@@ -148,6 +185,7 @@ def test_listing():
     }
 
     assert expected == set(StructuringElement.listing())
+
 
 def test_rand():
     rand1 = Rand(7, "f64")()

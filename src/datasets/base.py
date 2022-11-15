@@ -36,7 +36,9 @@ class Dataset(torch.utils.data.Dataset):
         return self.inputs[index, :], self.targets[index, :]
 
 
-class DataModule(pl.LightningDataModule, metaclass=ABCMeta):  # pylint: disable=too-many-instance-attributes
+class DataModule(
+    pl.LightningDataModule, metaclass=ABCMeta
+):  # pylint: disable=too-many-instance-attributes
     """Base abstract class for datasets."""
 
     def __init__(
@@ -58,11 +60,13 @@ class DataModule(pl.LightningDataModule, metaclass=ABCMeta):  # pylint: disable=
         self.val_dataset: Dataset
 
     def scale(self, tensor: torch.Tensor) -> torch.Tensor:
+        """Convert tensor to right precision and rescale it in [0; 1]."""
         return torchvision.transforms.ConvertImageDtype(self.torch_precision)(
             tensor
         )
 
     def normalize(self, tensor: torch.Tensor) -> torch.Tensor:
+        """Normalize the data."""
         return torchvision.transforms.Lambda(
             lambda x: (x - torch.mean(x)) / torch.std(x)
         )(tensor)
@@ -70,6 +74,7 @@ class DataModule(pl.LightningDataModule, metaclass=ABCMeta):  # pylint: disable=
     def remodel_data(
         self, inputs: torch.Tensor, targets: torch.Tensor
     ) -> Tuple[torch.Tensor, torch.Tensor]:
+        """Create adapted morphological dataset from given data."""
         inputs, targets = self.operation(inputs, targets)
         return inputs.to(self.torch_precision), targets.to(self.torch_precision)
 

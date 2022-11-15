@@ -3,10 +3,12 @@ from unittest.mock import MagicMock
 
 from models.layers.pconv import PConv
 
-@pytest.mark.parametrize("class_",
+
+@pytest.mark.parametrize(
+    "class_",
     [
         PConv,
-    ]
+    ],
 )
 def test_init(class_, monkeypatch):
     init_mock = MagicMock()
