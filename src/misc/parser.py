@@ -3,14 +3,15 @@
 import argparse
 from operations import OPS
 from operations.structuring_elements import STRUCTURING_ELEMENTS
+from models import MODELS
 
-from misc.losses import LOSSES
+from losses import LOSSES
 from misc.utils import PRECISIONS_TORCH
 
 parser = argparse.ArgumentParser(description="Train a model.")
-parser.add_argument("model", help="model to load")
+parser.add_argument("model", help="model to load", choices=MODELS)
 parser.add_argument(
-    "--loss", choices=LOSSES.keys(), help="loss to use", default="mse"
+    "--loss", choices=LOSSES, help="loss to use", default="mse"
 )
 
 parser.add_argument(
