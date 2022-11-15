@@ -14,11 +14,12 @@ import mlflow.pytorch
 from mlflow import ActiveRun
 
 from misc.context import RunContext, Task
-from misc.parser import parser, LOSSES
+from misc.parser import parser
 from misc.visualizer import VisualizerCallback
 from misc.utils import PRECISIONS_TORCH, plot_grid
 from datasets.base import DataModule
 from models.base import VAL_LOSS, BaseNetwork
+from losses.losses import Loss
 from operations.base import Operation
 from operations.structuring_elements import StructuringElement
 from tasks import output_managment
@@ -149,12 +150,14 @@ def main(args: Namespace, run: ActiveRun) -> None:
             percentage=args.percentage,
         )
 
-    # TODO model should have available keys in args
+    with Task("Loading loss"):
+        loss = Loss.select(args.loss)
+
     with Task("Loading model"):
         model = BaseNetwork.select(
             name=args.model,
             filter_size=args.filter_size,
-            loss_function=LOSSES[args.loss](),
+            loss_function=loss(),
             dtype=PRECISIONS_TORCH[args.precision],
             # device=device,
         )
