@@ -14,7 +14,7 @@ import mlflow.pytorch
 from mlflow import ActiveRun
 
 from misc.context import RunContext, Task
-from misc.parser import parser
+from misc.parser import Parser
 from misc.visualizer import VisualizerCallback
 from misc.utils import PRECISIONS_TORCH, plot_grid
 from datasets.base import DataModule
@@ -215,7 +215,7 @@ def main(args: Namespace, run: ActiveRun) -> None:
 
 if __name__ == "__main__":
     with Task("Parsing command line"):
-        args_ = parser.parse_args()
+        args_ = Parser().parse_args()
         # device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
     mlf_logger = MLFlowLogger(
