@@ -1,7 +1,7 @@
 """Loaders for the supported datasets."""
 
 from abc import abstractmethod, ABCMeta
-from typing import Any, List, Optional, Tuple, Callable
+from typing import Any, List, Optional, Tuple, Type
 
 import inspect
 import pytorch_lightning as pl
@@ -36,7 +36,7 @@ class Dataset(torch.utils.data.Dataset):
         return self.inputs[index, :], self.targets[index, :]
 
 
-class DataModule(pl.LightningDataModule, metaclass=ABCMeta):
+class DataModule(pl.LightningDataModule, metaclass=ABCMeta):  # pylint: disable=too-many-instance-attributes
     """Base abstract class for datasets."""
 
     def __init__(
@@ -112,17 +112,17 @@ class DataModule(pl.LightningDataModule, metaclass=ABCMeta):
         return DataLoader(Dataset(torch.empty(0), torch.empty(0)))
 
     @classmethod
-    def select_(cls, name: str, **kwargs: Any) -> Optional["DataModule"]:
+    def select_(cls, name: str) -> Optional[Type["DataModule"]]:
         """
         Class method iterating over all subclasses to load the desired dataset.
         """
         if cls.__name__.lower() == name:
-            return cls(**kwargs)
+            return cls
 
         for subclass in cls.__subclasses__():
-            instance = subclass.select_(name, **kwargs)
-            if instance is not None:
-                return instance
+            selected = subclass.select_(name)
+            if selected is not None:
+                return selected
 
         return None
 
@@ -133,11 +133,11 @@ class DataModule(pl.LightningDataModule, metaclass=ABCMeta):
         data module.
         """
 
-        selected = cls.select_(name, **kwargs)
+        selected = cls.select_(name)
         if selected is None:
-            raise Exception("The selected dataset was not found.")
+            raise ValueError("The selected dataset was not found.")
 
-        return selected
+        return selected(**kwargs)
 
     @classmethod
     def listing(cls) -> List[str]:
@@ -150,138 +150,3 @@ class DataModule(pl.LightningDataModule, metaclass=ABCMeta):
             subclasses = subclasses.union(subclass.listing())
 
         return list(subclasses)
-
-
-# pylint: disable=all
-"""
-class BIWTOHDataset(Dataset):
-    def __init__(self, precision, dataset_path, train=False, **kwargs):
-        dtype = PRECISIONS_NP[precision]
-
-        if train:
-            self.inputs = np.load(f"{dataset_path}/train-images.npy").astype(
-                dtype
-            )
-            self.targets = np.load(f"{dataset_path}/train-labels.npy").astype(
-                dtype
-            )
-        else:
-            self.inputs = np.load(f"{dataset_path}/t10k-images.npy").astype(
-                dtype
-            )
-            self.targets = np.load(f"{dataset_path}/t10k-labels.npy").astype(
-                dtype
-            )
-
-
-class SIDDDataset(Dataset):
-    # https://paperswithcode.com/dataset/sidd
-
-    def __init__(
-        self,
-        precision,
-        dataset_path,
-        train=False,
-        patch_size=None,
-        smartphone_codes=None,
-        iso_levels=None,
-        shutter_speeds=None,
-        illuminants=None,
-        ibcs=None,
-        **kwargs,
-    ):
-        patch_shape = (patch_size, patch_size)
-        dataset_path = dataset_path[0]
-        filters = {
-            "smartphone_code": split_arg(smartphone_codes),
-            "iso_level": split_arg(iso_levels, int),
-            "shutter_speed": split_arg(shutter_speeds, int),
-            "illuminant": split_arg(illuminants),
-            "illuminant_brightness_code": split_arg(ibcs),
-        }
-
-        def filter_data(instance: Dict[str, Any]):
-            nonlocal filters
-            keep = True
-            for key, values in filters.items():
-                if values is not None:
-                    keep = keep and instance[key] in values
-            return keep
-
-        instances = SIDDDataset._get_instances(dataset_path, filter_data)
-        self.inputs = SIDDDataset._load(instances, dataset_path, NOISY_NAME)
-        self.targets = SIDDDataset._load(instances, dataset_path, GT_NAME)
-
-        print(f"Raw X: {len(self.targets)}\nRaw Y: {len(self.inputs)}")
-
-        patches = []
-        x_all = []
-        y_all = []
-        for x, y in zip(self.inputs, self.targets):
-            p = make_patches(x.shape, patch_shape)
-            patches.append(p)
-            for pp in p:
-                x_all.append(x[pp])
-                y_all.append(y[pp])
-        x_all = np.array(x_all).astype("float32")[:, np.newaxis, :, :] / 255.0
-        y_all = np.array(y_all).astype("float32")[:, np.newaxis, :, :] / 255.0
-
-        print(f"Cut into {len(x_all)} patches of shape {patch_shape}")
-
-        x_train, x_valid = model_selection.train_test_split(
-            x_all, test_size=0.33, random_state=42
-        )
-
-    def _get_instances(dataset_path, filter_predicate=lambda inst: True):
-        f = open(f"{dataset_path}/Scene_Instances.txt")
-        instances_str = list(
-            filter(
-                lambda l: len(l) != 0,
-                map(lambda l: l.strip(), f.read().split("\n")),
-            )
-        )
-
-        def annotate_instance(l):
-            parts = l.split("_")
-            return {
-                "path": l,
-                "scene_number": parts[1],
-                "smartphone_code": parts[2],
-                "iso_level": int(parts[3]),
-                "shutter_speed": int(parts[4]),
-                "illuminant": parts[5],
-                "illuminant_brightness_code": parts[6],
-            }
-
-        return list(
-            filter(filter_predicate, map(annotate_instance, instances_str))
-        )
-
-    def _load(
-        instances: List[Dict[str, Any]], dataset_path: str, image_name: str
-    ):
-        image_path = f"{dataset_path}/Data/{{}}/{image_name}.PNG"
-
-        def load_instance(instance: Dict[str, Any]):
-            nonlocal image_path
-            return io.imread(image_path.format(instance["path"]))
-
-        return [load_instance(instance) for instance in instances]
-
-
-# LOADERS = {
-#     "sidd": load_sidd,
-#     "mnist": load_mnist,
-#     "fashion_mnist": load_fmnist,
-#     "biwtoh": load_biwtoh,
-#     "gwtoh": load_biwtoh,
-# }
-LOADERS = {
-    "sidd": None,
-    "mnist": None,
-    "fashion_mnist": None,
-    "biwtoh": None,
-    "gwtoh": None,
-}
-
-"""
