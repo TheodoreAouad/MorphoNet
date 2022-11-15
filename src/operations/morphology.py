@@ -3,7 +3,7 @@
 from scipy import ndimage
 import numpy as np
 
-from .base import MorphologicalOperation
+from .base import MorphologicalOperation, BinaryMorphologicalOperation
 
 # TODO pad mode must be explicitely the same as for model inputs
 
@@ -58,36 +58,22 @@ class WTopHat(Opening):
         return image - opened
 
 
-class BDilation(MorphologicalOperation):
+class BDilation(BinaryMorphologicalOperation):
     """Do a binary dilation on the image."""
 
     def _func(
         self, image: np.ndarray, structuring_element: np.ndarray
     ) -> np.ndarray:
-        crop_h, crop_w = (
-            structuring_element.shape[0] // 2,
-            structuring_element.shape[1] // 2,
-        )
-
-        return ndimage.binary_dilation(
-            image > 0, structure=structuring_element
-        )[crop_h : image.shape[0] - crop_h, crop_w : image.shape[1] - crop_w]
+        return ndimage.binary_dilation(image, structure=structuring_element)
 
 
-class BErosion(MorphologicalOperation):
+class BErosion(BinaryMorphologicalOperation):
     """Do a binary erosion on the image."""
 
     def _func(
         self, image: np.ndarray, structuring_element: np.ndarray
     ) -> np.ndarray:
-        crop_h, crop_w = (
-            structuring_element.shape[0] // 2,
-            structuring_element.shape[1] // 2,
-        )
-
-        return ndimage.binary_erosion(image > 0, structure=structuring_element)[
-            crop_h : image.shape[0] - crop_h, crop_w : image.shape[1] - crop_w
-        ]
+        return ndimage.binary_erosion(image, structure=structuring_element)
 
 
 class BOpening(BDilation, BErosion):

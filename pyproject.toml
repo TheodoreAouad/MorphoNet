@@ -40,6 +40,7 @@ disallow_untyped_defs = true
 exclude = [
   "__pycache__",
   "env",
+  "tests",
 ]
 mypy_path = "./src/"
 namespace_packages = true
@@ -69,4 +70,24 @@ addopts = [
 ]
 pythonpath = [
   "src",
+]
+filterwarnings = [
+  "ignore::DeprecationWarning"
+]
+
+[tool.coverage.run]
+source = [
+  "src",
+]
+omit = [
+  "*/__init__.py",
+  "src/misc/parser.py",
+  "src/misc/context.py",
+  "src/misc/visualizer.py",
+  "src/tasks/train.py",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+  "pragma: no cover"
 ]

@@ -8,13 +8,16 @@ from .base import NoiseOperation
 
 
 def _random_distribution(
-    percentage: int, size: Tuple[int, ...], space: Optional[List[int]] = None
+    percentage: int, shape: Tuple[int, ...], space: Optional[List[int]] = None
 ) -> np.ndarray:
-    """#TODO"""
+    """
+    Create a mask of the desired shape with noisy pixels. Percentage of noise is
+    divided between each element of the given space.
+    """
     if space is None:
         space = [1]
 
-    nb_total = size[0] * size[1]
+    nb_total = shape[0] * shape[1]
     nb_el = int(nb_total * percentage / 100) // len(space)
     arr = np.zeros(nb_total)
     for i, value in enumerate(space):
@@ -22,7 +25,7 @@ def _random_distribution(
         arr[start_index : start_index + nb_el] = value
 
     np.random.shuffle(arr)
-    return arr.reshape(size)
+    return arr.reshape(shape)
 
 
 class Salt(NoiseOperation):
@@ -31,10 +34,8 @@ class Salt(NoiseOperation):
     def _func(
         self, image: np.ndarray, percentage: int
     ) -> Tuple[np.ndarray, np.ndarray]:
-        rand = _random_distribution(percentage, size=image.shape)
-        return image, np.ma.masked_array(
-            image, rand.reshape(image.shape)
-        ).filled(1)
+        rand = _random_distribution(percentage, shape=image.shape)
+        return image, np.ma.masked_array(image, rand).filled(1)
 
 
 class Pepper(NoiseOperation):
@@ -45,10 +46,8 @@ class Pepper(NoiseOperation):
     ) -> Tuple[np.ndarray, np.ndarray]:
         image = 0.5 + image / 2.0
 
-        rand = _random_distribution(percentage, size=image.shape)
-        return image, np.ma.masked_array(
-            image, rand.reshape(image.shape)
-        ).filled(0)
+        rand = _random_distribution(percentage, shape=image.shape)
+        return image, np.ma.masked_array(image, rand).filled(0)
 
 
 class SaltPepper(NoiseOperation):

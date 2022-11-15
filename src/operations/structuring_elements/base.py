@@ -39,9 +39,9 @@ class StructuringElement(metaclass=ABCMeta):
             return cls
 
         for subclass in cls.__subclasses__():
-            instance = subclass.select_(name)
-            if instance is not None:
-                return instance
+            selected = subclass.select_(name)
+            if selected is not None:
+                return selected
 
         return None
 
@@ -69,6 +69,9 @@ class StructuringElement(metaclass=ABCMeta):
         for subclass in cls.__subclasses__():
             subclasses = subclasses.union(subclass.listing())
 
+        if "empty" in subclasses:
+            subclasses.remove("empty")
+
         return list(subclasses)
 
     def center_in(
@@ -95,7 +98,7 @@ class StructuringElement(metaclass=ABCMeta):
 class Empty(StructuringElement):
     """No structuring element."""
 
-    def __init__(self, filter_size: int = -1, precision: str = "") -> None:
+    def __init__(self, filter_size: int = -1, precision: str = "f64") -> None:
         super().__init__(filter_size, precision)
 
     def _draw(self, radius: int) -> np.ndarray:
