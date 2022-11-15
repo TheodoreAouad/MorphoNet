@@ -32,7 +32,7 @@ class ScaleBias(BaseLayer):
         target: Optional[np.ndarray] = None,
         comments: str = "",
         divider: Optional[AxesDivider] = None,
-    ) -> Axes:
+    ) -> Axes:  # pragma: no cover
 
         axis.get_yaxis().set_ticks([])
         axis.get_xaxis().set_ticks([])

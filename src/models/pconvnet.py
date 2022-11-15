@@ -6,6 +6,7 @@ import torch
 from .base import BaseNetwork
 from .layers.scale_bias import ScaleBias
 from .layers.pconv import PConv
+from .utils import NotTested
 
 
 class PConvNet(BaseNetwork):
@@ -42,7 +43,7 @@ class PConvNet(BaseNetwork):
 
 
 class PConvNetDouble(BaseNetwork):
-    """Network with one PConv layer."""
+    """Network with two PConv layer."""
 
     def __init__(
         self,
@@ -73,6 +74,52 @@ class PConvNetDouble(BaseNetwork):
         # pylint: disable=arguments-differ
         batch = self.pconv1(batch)
         batch = self.pconv2(batch)
+        batch = self.sb1(batch)
+
+        return batch
+
+
+# TODO not tested
+class PConvNetFour(BaseNetwork, metaclass=NotTested):
+    """Network with four PConv layers."""
+
+    def __init__(
+        self,
+        filter_size: int,
+        loss_function: Callable,
+        **kwargs: Any,
+    ):
+        super().__init__(loss_function=loss_function)
+        self._set_hparams(
+            {
+                "filter_size": filter_size,
+                "loss_function": loss_function,
+                **kwargs,
+            }
+        )
+
+        self.pconv1 = PConv(
+            in_channels=1, out_channels=1, filter_size=filter_size, **kwargs
+        )
+        self.pconv2 = PConv(
+            in_channels=1, out_channels=1, filter_size=filter_size, **kwargs
+        )
+        self.pconv3 = PConv(
+            in_channels=1, out_channels=1, filter_size=filter_size, **kwargs
+        )
+        self.pconv4 = PConv(
+            in_channels=1, out_channels=1, filter_size=filter_size, **kwargs
+        )
+        self.sb1 = ScaleBias(num_features=1, **kwargs)
+
+    def forward(
+        self, batch: torch.Tensor, *args: Any, **kwargs: Any
+    ) -> torch.Tensor:
+        # pylint: disable=arguments-differ
+        batch = self.pconv1(batch)
+        batch = self.pconv2(batch)
+        batch = self.pconv3(batch)
+        batch = self.pconv4(batch)
         batch = self.sb1(batch)
 
         return batch

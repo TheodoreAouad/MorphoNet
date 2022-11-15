@@ -26,7 +26,7 @@ class BaseLayer(pl.LightningModule):
         target: Optional[np.ndarray] = None,
         comments: str = "",
         divider: Optional[AxesDivider] = None,
-    ) -> Axes:
+    ) -> Axes:  # pragma: no cover
         """
         Method specific to each layer that plots its visualization.
         """
@@ -40,7 +40,7 @@ class BaseLayer(pl.LightningModule):
         target: Optional[np.ndarray] = None,
         comments: str = "",
         divider: Optional[AxesDivider] = None,
-    ) -> None:
+    ) -> None:  # pragma: no cover
         """
         Function calling implemented `plot_` method while managing figure and
         plot saving.

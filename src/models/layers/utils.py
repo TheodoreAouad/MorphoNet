@@ -1,18 +1,10 @@
 """Utility functions for the layers package."""
 
-from typing import Any, Callable, Union, Tuple
+from typing import Any, Callable
 import mlflow
 import torch
 
 INIT_PARAM = "tensor_init"
-
-
-def make_pair(object_: Union[int, Tuple[int, int]]) -> Tuple[int, int]:
-    """Make a pair out of the argument, if it is not already a tuple."""
-    if isinstance(object_, int):
-        return (object_, object_)
-
-    return object_
 
 
 def init_context(init_function: Callable, **kwargs: Any) -> None:

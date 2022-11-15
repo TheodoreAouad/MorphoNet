@@ -12,7 +12,7 @@ import numpy as np
 
 from models.layers import PAD_MODE
 from misc.utils import rmse
-from .utils import make_pair, init_context, fill_
+from .utils import init_context, fill_
 from .base import BaseLayer
 
 # TODO check alternate grad for param and filter
@@ -30,7 +30,7 @@ class PConv(BaseLayer):
         **kwargs: Any,
     ):
         super().__init__()
-        self.filter_shape = make_pair(filter_size)
+        self.filter_shape = (filter_size, filter_size)
         self.pad_h = self.filter_shape[0] // 2
         self.pad_w = self.filter_shape[1] // 2
         self.pad = (self.pad_w, self.pad_w, self.pad_h, self.pad_h)
@@ -77,7 +77,7 @@ class PConv(BaseLayer):
         target: Optional[np.ndarray] = None,
         comments: str = "",
         divider: Optional[AxesDivider] = None,
-    ) -> Axes:
+    ) -> Axes:  # pragma: no cover
         p = self.p.squeeze().detach().cpu()  # pylint: disable=invalid-name
 
         axis.invert_yaxis()

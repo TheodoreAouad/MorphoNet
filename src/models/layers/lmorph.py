@@ -1,6 +1,6 @@
 """Layer implementing the LMorph function."""
 
-from typing import Any, Union, Tuple, Optional
+from typing import Any, Optional
 from torch import nn
 import torch
 import matplotlib.pyplot as plt
@@ -10,7 +10,7 @@ from mpl_toolkits.axes_grid1.axes_divider import AxesDivider
 import numpy as np
 
 from misc.utils import rmse
-from .utils import make_pair, init_context, folded_normal_
+from .utils import init_context, folded_normal_
 from .base import BaseLayer
 
 PAD_MODE = "reflect"
@@ -26,11 +26,11 @@ class LMorph(BaseLayer):
         self,
         in_channels: int,
         out_channels: int,
-        filter_size: Union[int, Tuple[int, int]],
+        filter_size: int,
         **kwargs: Any,
     ):
         super().__init__()
-        self.filter_shape = make_pair(filter_size)
+        self.filter_shape = (filter_size, filter_size)
         self.pad_h = self.filter_shape[0] // 2
         self.pad_w = self.filter_shape[1] // 2
         self.pad = (self.pad_w, self.pad_w, self.pad_h, self.pad_h)
@@ -82,7 +82,7 @@ class LMorph(BaseLayer):
         target: Optional[np.ndarray] = None,
         comments: str = "",
         divider: Optional[AxesDivider] = None,
-    ) -> Axes:
+    ) -> Axes:  # pragma: no cover
         p = self.p.squeeze().detach().cpu()  # pylint: disable=invalid-name
         if p < 0:
             cmap = "plasma_r"

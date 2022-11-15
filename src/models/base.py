@@ -84,9 +84,9 @@ class BaseNetwork(pl.LightningModule, metaclass=ABCMeta):
             return cls
 
         for subclass in cls.__subclasses__():
-            instance = subclass.select_(name)
-            if instance is not None:
-                return instance
+            selected = subclass.select_(name)
+            if selected is not None:
+                return selected
 
         return None
 
@@ -99,7 +99,7 @@ class BaseNetwork(pl.LightningModule, metaclass=ABCMeta):
 
         selected = cls.select_(name)
         if selected is None:
-            raise Exception("The selected class was not found.")
+            raise ValueError("The selected model was not found.")
 
         return selected(**kwargs)
 

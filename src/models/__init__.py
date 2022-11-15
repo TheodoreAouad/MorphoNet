@@ -1,9 +1,9 @@
 """Init models module."""
 
-from .convnet import ConvNet
-from .smorphnet import SMorphNet
-from .lmorphnet import LMorphNet
-from .pconvnet import PConvNet
+from .smorphnet import *
+from .lmorphnet import *
+from .pconvnet import *
+from .convnet import *
 
 from .base import BaseNetwork
 

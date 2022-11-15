@@ -2,10 +2,12 @@
 
 from typing import Callable, Any
 import torch
+import torch.nn as nn
 
 from .base import BaseNetwork
 from .layers.scale_bias import ScaleBias
 from .layers.smorph import SMorph, SMorphTanh
+from .utils import NotTested
 
 
 class SMorphNet(BaseNetwork):
@@ -89,6 +91,97 @@ class SMorphNetDouble(BaseNetwork):
         # pylint: disable=arguments-differ
         batch = self.sm1(batch)
         batch = self.sm2(batch)
+        batch = self.sb1(batch)
+
+        return batch
+
+
+# TODO not tested
+class SMorphNetFour(BaseNetwork, metaclass=NotTested):
+    """Network with four SMorph layers."""
+
+    def __init__(
+        self,
+        filter_size: int,
+        loss_function: Callable,
+        **kwargs: Any,
+    ):
+        super().__init__(loss_function=loss_function)
+        self._set_hparams(
+            {
+                "filter_size": filter_size,
+                "loss_function": loss_function,
+                **kwargs,
+            }
+        )
+
+        self.sm1 = SMorph(
+            in_channels=1, out_channels=1, filter_size=filter_size, **kwargs
+        )
+        self.sm2 = SMorph(
+            in_channels=1, out_channels=1, filter_size=filter_size, **kwargs
+        )
+        self.sm3 = SMorph(
+            in_channels=1, out_channels=1, filter_size=filter_size, **kwargs
+        )
+        self.sm4 = SMorph(
+            in_channels=1, out_channels=1, filter_size=filter_size, **kwargs
+        )
+        self.sb1 = ScaleBias(num_features=1, **kwargs)
+
+    def forward(
+        self, batch: torch.Tensor, *args: Any, **kwargs: Any
+    ) -> torch.Tensor:
+        # pylint: disable=arguments-differ
+        batch = self.sm1(batch)
+        batch = self.sm2(batch)
+        batch = self.sm3(batch)
+        batch = self.sm4(batch)
+        batch = self.sb1(batch)
+
+        return batch
+
+
+# TODO not tested
+class SMorphNetWTH(BaseNetwork, metaclass=NotTested):
+    """
+    Network with two SMorph layers and adaptation to support white top-hat
+    operation.
+    """
+
+    def __init__(
+        self,
+        filter_size: int,
+        loss_function: Callable,
+        **kwargs: Any,
+    ):
+        super().__init__(loss_function=loss_function)
+        self._set_hparams(
+            {
+                "filter_size": filter_size,
+                "loss_function": loss_function,
+                **kwargs,
+            }
+        )
+
+        self.sm1 = SMorph(
+            in_channels=1, out_channels=1, filter_size=filter_size, **kwargs
+        )
+        self.sm2 = SMorph(
+            in_channels=1, out_channels=1, filter_size=filter_size, **kwargs
+        )
+        self.sb1 = ScaleBias(num_features=1, **kwargs)
+        self.lmbda = nn.Parameter(torch.empty((1), **kwargs))
+
+    def forward(
+        self, batch: torch.Tensor, *args: Any, **kwargs: Any
+    ) -> torch.Tensor:
+        # pylint: disable=arguments-differ
+        batch = self.sm1(batch)
+        batch = self.sm2(batch)
+        batch = (0.5 + torch.tanh(self.lmbda) / 2) * batch - torch.tanh(
+            self.lmbda
+        ) * batch
         batch = self.sb1(batch)
 
         return batch

@@ -76,7 +76,7 @@ class SMorph(BaseLayer):
         target: Optional[np.ndarray] = None,
         comments: str = "",
         divider: Optional[AxesDivider] = None,
-    ) -> Axes:
+    ) -> Axes:  # pragma: no cover
         alpha = self.alpha.squeeze().detach().cpu()
         if alpha < 0:
             cmap = "plasma_r"
@@ -138,7 +138,7 @@ class SMorphTanh(SMorph):
         target: Optional[np.ndarray] = None,
         comments: str = "",
         divider: Optional[AxesDivider] = None,
-    ) -> Axes:
+    ) -> Axes:  # pragma: no cover
         axis.invert_yaxis()
         axis.get_yaxis().set_ticks([])
         axis.get_xaxis().set_ticks([])
@@ -163,3 +163,74 @@ class SMorphTanh(SMorph):
         axis.set_xlabel(comments, fontsize=20)
 
         return axis
+
+
+# TODO not tested
+class SMorphDual(BaseLayer):  # pylint: disable=abstract-method
+    """Module implementing two SMorph layers with shared filter weights."""
+
+    def __init__(
+        self,
+        in_channels: int,
+        out_channels: int,
+        filter_size: int,
+        **kwargs: Any,
+    ):
+        super().__init__()
+        self.filter_shape = (filter_size, filter_size)
+        self.pad_h = self.filter_shape[0] // 2
+        self.pad_w = self.filter_shape[1] // 2
+        self.pad = (self.pad_w, self.pad_w, self.pad_h, self.pad_h)
+
+        self.filter = nn.Parameter(
+            torch.empty(
+                (out_channels, in_channels, *self.filter_shape), **kwargs
+            )
+        )
+        self.alpha1 = nn.Parameter(
+            torch.empty((out_channels, in_channels), **kwargs)
+        )
+        self.alpha2 = nn.Parameter(
+            torch.empty((out_channels, in_channels), **kwargs)
+        )
+
+        self.init_parameters()
+
+    def init_parameters(self) -> None:
+        """Initialize tensors."""
+        with torch.no_grad():
+            init_context(folded_normal_, tensor=self.filter, mean=0.0, std=0.01)
+            self.alpha1.zero_()
+            self.alpha2.zero_()
+
+    # TODO test fold, unfold, function results shapes
+    def forward(
+        self, batch: torch.Tensor, *args: Any, **kwargs: Any
+    ) -> torch.Tensor:
+        input_padded = nn.functional.pad(batch, self.pad, mode=PAD_MODE)
+
+        unfolder_ = nn.Unfold(kernel_size=self.filter_shape)
+        unfolded = unfolder_(input_padded)
+
+        sum_ = unfolded.transpose(1, 2) + self.filter.squeeze().ravel()
+        sum_alpha = self.alpha1.squeeze() * sum_
+        exp_sum_alpha = sum_alpha.exp()
+        sum_exp_sum_alpha = sum_ * exp_sum_alpha
+
+        result = sum_exp_sum_alpha.sum(2) / exp_sum_alpha.sum(2)
+
+        input_padded = nn.functional.pad(
+            result.view(*batch.size()), self.pad, mode=PAD_MODE
+        )
+
+        unfolder_ = nn.Unfold(kernel_size=self.filter_shape)
+        unfolded = unfolder_(input_padded)
+
+        sum_ = unfolded.transpose(1, 2) + self.filter.squeeze().ravel()
+        sum_alpha = self.alpha2.squeeze() * sum_
+        exp_sum_alpha = sum_alpha.exp()
+        sum_exp_sum_alpha = sum_ * exp_sum_alpha
+
+        result = sum_exp_sum_alpha.sum(2) / exp_sum_alpha.sum(2)
+
+        return result.view(*batch.size())
