@@ -33,6 +33,8 @@ $ python -m tasks.train\
 
 I personally use the code in a Python [virtual environment](https://docs.python.org/3/library/venv.html).
 
+> Note: If you train for a denoising task, the `--sel` argument is automatically ignored; on the other hand, if you train for a morphological operation, the `--percentage` is automatically ignored.
+
 ## Other Information
 
 Bunch of things are not yet reimplemented or perfect, but you can already find here a lot of the papers' basis. I will also make sure more tests are written.

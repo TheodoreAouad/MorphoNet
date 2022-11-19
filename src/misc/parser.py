@@ -97,7 +97,6 @@ class Parser(argparse.ArgumentParser):
         )
 
         for dataset_name in DataModule.listing():
-            print(dataset_name)
             class_ = DataModule.select_(dataset_name)
             if class_ is None:
                 continue

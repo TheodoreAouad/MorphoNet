@@ -15,7 +15,7 @@ from mlflow.entities import Run, RunData
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from mpl_toolkits.axes_grid1.axes_divider import AxesDivider
 
-from misc.utils import snr
+from misc.utils import snr, psnr
 from models.base import BaseNetwork
 from operations.structuring_elements.base import StructuringElement
 
@@ -309,7 +309,8 @@ def plot_image(
         axis.set_title(f"{percentage}%", fontsize=20)
     if target is not None:
         snr_ = snr(image.numpy(), target.numpy())
-        comments = f"SNR: {snr_:.3f}\n{comments}"
+        psnr_ = psnr(image.numpy(), target.numpy())
+        comments = f"SNR (dB): {snr_:.3f}\nPSNR (dB): {psnr_:.3f}\n{comments}"
 
     axis.set_xlabel(comments, fontsize=20)
 
@@ -387,6 +388,7 @@ def ploting_noise_results(  # pylint: disable=too-many-locals,too-many-arguments
                         percentage,
                         divider=divider,
                         comments=operation,
+                        target=target,
                     )
 
                 path = get_visfile_path(run)

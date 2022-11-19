@@ -31,19 +31,48 @@ def _fit_nchw(tensor: torch.Tensor, include_c: bool = False) -> torch.Tensor:
     return tensor[:, None, :, :]  # 2D data with N samples (N, C, W)
 
 
-def rmse(array_x: np.ndarray, array_y: np.ndarray) -> float:
+def rmse(
+    array_x: np.ndarray, array_y: np.ndarray, adjust_range: bool = True
+) -> float:
     """Calculate RMSE between two arrays."""
-    array_x_ = (array_x - np.min(array_x)) / (np.max(array_x) - np.min(array_x))
-    array_y_ = (array_y - np.min(array_y)) / (np.max(array_y) - np.min(array_y))
+    if adjust_range:
+        array_x = (array_x - np.min(array_x)) / (
+            np.max(array_x) - np.min(array_x)
+        )
+        array_y = (array_y - np.min(array_y)) / (
+            np.max(array_y) - np.min(array_y)
+        )
 
-    sum_ = np.sum(np.square(array_x_ - array_y_))
+    sum_ = np.sum(np.square(array_x - array_y))
 
-    return np.sqrt(sum_ / np.prod(array_x_.shape))
+    return np.sqrt(sum_ / np.prod(array_x.shape))
 
 
-def snr(noised: np.ndarray, target: np.ndarray) -> float:
-    """Calculate SNR between two arrays."""
-    return np.sum(noised**2) / np.sum((target - noised) ** 2)
+def snr(
+    noised: np.ndarray, target: np.ndarray, adjust_range: bool = True
+) -> float:
+    """Calculate SNR (dB) between two arrays."""
+    if adjust_range:
+        noised = (noised - np.min(noised)) / (np.max(noised) - np.min(noised))
+        target = (target - np.min(target)) / (np.max(target) - np.min(target))
+
+    return 10 * np.log10(np.sum(noised**2) / np.sum((target - noised) ** 2))
+
+
+def psnr(
+    noised: np.ndarray,
+    target: np.ndarray,
+    adjust_range: bool = True,
+    image_max: float = 1.0,
+) -> float:
+    """Calculate PSNR (dB) between two arrays."""
+    if adjust_range:
+        noised = (noised - np.min(noised)) / (np.max(noised) - np.min(noised))
+        target = (target - np.min(target)) / (np.max(target) - np.min(target))
+
+    mse = np.sum((target - noised) ** 2) / np.prod(noised.shape)
+
+    return 20 * np.log10(image_max) - 10 * np.log10(mse)
 
 
 def plot_grid(samples: np.ndarray) -> np.ndarray:

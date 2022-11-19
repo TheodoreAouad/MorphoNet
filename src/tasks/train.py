@@ -30,15 +30,10 @@ logging.basicConfig(
     datefmt="%Y-%m-%d %H:%M:%S",
 )
 
-# TODO filter size seems to be alsways int, but could be set to tuple
-# TODO add param to change mlflow experiment
 # TODO for lmorph, as inputs are in the range [1;2], the output should also be
 # calculated from [1;2]: maybe harder to learn when starting in the wrong scale
-# TODO normalisation des données
-# TODO permettre de réduire la fréquence des print log (progress bar)
 # TODO tester avec nombre de workers plus élever
 # TODO check si les données sont bien en mémoire en permanance, peut-être la cause de la lenteur
-# TODO select and select_ methods types like for models
 
 
 def termination_logs(  # pylint: disable=too-many-arguments

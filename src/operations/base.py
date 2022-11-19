@@ -154,6 +154,7 @@ class BinaryMorphologicalOperation(Operation):
         """Function returning the processed image."""
 
 
+# TODO log on mlflow mean psnr / snr
 class NoiseOperation(Operation):
     """Abstract class with code to apply noise operations."""
 
