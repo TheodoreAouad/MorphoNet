@@ -52,6 +52,7 @@ def termination_logs(  # pylint: disable=too-many-arguments
         name=args.experiment,
         version=version,
         log_graph=True,
+        default_hp_metric=False,
     )
     tb_logger.log_graph(model, data_module.sample[0])
     tb_logger.log_hyperparams(vars(args))
@@ -119,7 +120,7 @@ def init_callbacks(
         mode="min",  # TODO change for classif
     )
     tb_logger = TensorBoardLogger(
-        f"{os.getcwd()}/lightning_logs/", name=args.experiment
+        f"{os.getcwd()}/lightning_logs/", name=args.experiment, default_hp_metric=False,
     )
     progress_bar = TQDMProgressBar(refresh_rate=100)
 

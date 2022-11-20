@@ -95,8 +95,7 @@ class SMorphNetDouble(BaseNetwork):
         return batch
 
 
-# TODO not tested
-class SMorphNetFour(BaseNetwork, metaclass=NotTested):
+class SMorphNetFour(BaseNetwork):
     """Network with four SMorph layers."""
 
     def __init__(

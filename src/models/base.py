@@ -8,9 +8,11 @@ from pytorch_lightning.utilities.types import STEP_OUTPUT
 import pytorch_lightning as pl
 import torch
 
+from misc.utils import psnr_batch
 
 VAL_LOSS = "val_loss"
 TRAIN_LOSS = "train_loss"
+PSNR = "mean_psnr"
 
 
 class BaseNetwork(pl.LightningModule, metaclass=ABCMeta):
@@ -69,10 +71,12 @@ class BaseNetwork(pl.LightningModule, metaclass=ABCMeta):
 
         predictions = self(inputs)
         loss = self.loss_function(predictions, targets)
+        psnr_ = psnr_batch(inputs, targets)
 
         self.log(VAL_LOSS, loss)
+        self.log(PSNR, psnr_batch(inputs, targets))
 
-        return loss
+        return {VAL_LOSS: loss, PSNR: psnr_}
 
     @classmethod
     def select_(cls, name: str) -> Optional[Type["BaseNetwork"]]:

@@ -70,10 +70,33 @@ def psnr(
         noised = (noised - np.min(noised)) / (np.max(noised) - np.min(noised))
         target = (target - np.min(target)) / (np.max(target) - np.min(target))
 
-    mse = np.sum((target - noised) ** 2) / np.prod(noised.shape)
+    mse = np.mean((target - noised) ** 2, dtype=np.float64)
+    return 10 * np.log10((image_max ** 2) / mse)
 
-    return 20 * np.log10(image_max) - 10 * np.log10(mse)
+def psnr_batch(
+    noised: torch.Tensor,
+    target: torch.Tensor,
+    adjust_range: bool = True,
+    image_max: float = 1.0,
+) -> float:
+    """Calculate PSNR (dB) between two batches of arrays."""
+    noised = noised.reshape(noised.shape[0], -1)
+    target = target.reshape(target.shape[0], -1)
 
+    if adjust_range:
+        noised_min, _ = torch.min(noised, dim=1)
+        noised_max, _ = torch.max(noised, dim=1)
+        target_min, _ = torch.min(target, dim=1)
+        target_max, _ = torch.max(target, dim=1)
+
+        noised = ((noised.T - noised_min) / (noised_max - noised_min)).T
+        target = ((target.T - target_min) / (target_max - target_min)).T
+
+    mse = torch.sum((target - noised) ** 2, dim=1) / noised.shape[1]
+
+    return (
+        torch.mean(10 * torch.log10((image_max ** 2) / mse))
+    ).item()
 
 def plot_grid(samples: np.ndarray) -> np.ndarray:
     """Plot grid image with given samples. Return the figure as an image."""

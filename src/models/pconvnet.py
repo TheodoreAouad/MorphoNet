@@ -6,7 +6,6 @@ import torch
 from .base import BaseNetwork
 from .layers.scale_bias import ScaleBias
 from .layers.pconv import PConv
-from .utils import NotTested
 
 
 class PConvNet(BaseNetwork):
@@ -79,8 +78,7 @@ class PConvNetDouble(BaseNetwork):
         return batch
 
 
-# TODO not tested
-class PConvNetFour(BaseNetwork, metaclass=NotTested):
+class PConvNetFour(BaseNetwork):
     """Network with four PConv layers."""
 
     def __init__(

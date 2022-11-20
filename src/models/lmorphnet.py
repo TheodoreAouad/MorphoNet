@@ -6,7 +6,6 @@ import torch
 from .base import BaseNetwork
 from .layers.scale_bias import ScaleBias
 from .layers.lmorph import LMorph
-from .utils import NotTested
 
 
 class LMorphNet(BaseNetwork):
@@ -79,8 +78,7 @@ class LMorphNetDouble(BaseNetwork):
         return batch
 
 
-# TODO not tested
-class LMorphNetFour(BaseNetwork, metaclass=NotTested):
+class LMorphNetFour(BaseNetwork):
     """Network with four LMorph layers."""
 
     def __init__(
