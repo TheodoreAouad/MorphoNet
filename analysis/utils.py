@@ -133,12 +133,12 @@ def forward(pl_module: pl.LightningModule, inputs: torch.Tensor) -> OrderedDict:
         ) -> None:
             nonlocal index
 
-            if hasattr(module_, "plot_"):
-                plot_method = getattr(module_, "plot_")
+            if hasattr(module__, "plot_"):
+                plot_method = getattr(module__, "plot_")
             else:
                 plot_method = None
 
-            modules[index] = (module_.__class__.__name__, plot_method)
+            modules[index] = (module__.__class__.__name__, plot_method, module_output)
 
             index += 1
 
@@ -256,8 +256,8 @@ def ploting(  # pylint: disable=too-many-locals,too-many-arguments,unused-argume
                     comments = f"Loss: {run.data.metrics['val_loss']:.3e}"
 
                 for (
-                    layer_index,  # pylint: disable=unused-variable
-                    (class_name, plot_method),
+                    _,
+                    (class_name, plot_method, _),
                 ) in modules:
                     if plot_method is None or (
                         excluded is not None and class_name.lower() in excluded
@@ -365,6 +365,12 @@ def ploting_noise_results(  # pylint: disable=too-many-locals,too-many-arguments
                     continue
 
                 run = filtered[iteration]
+                comments = ""
+                if "val_loss" in run.data.metrics:
+                    comments = f"Loss: {run.data.metrics['val_loss']:.3e}"
+                if "mean_psnr" in run.data.metrics:
+                    comments += f"\nMean PSNR: {run.data.metrics['mean_psnr']:.3f}"
+
 
                 with open(get_metafile_path(run), "rb") as metafile:
                     data = pickle.load(metafile)
@@ -400,6 +406,130 @@ def ploting_noise_results(  # pylint: disable=too-many-locals,too-many-arguments
                 result = pl_module.predict_step(
                     input_[None, None, :, :], -1
                 ).detach()
-                plot_image(axis, result[0, 0], target=target, divider=divider)
+                plot_image(axis, result[0, 0], target=target, divider=divider, comments=comments)
+
+    plt.show()
+
+
+def ploting_noise_filters(  # pylint: disable=too-many-locals,too-many-arguments,unused-argument
+    uri: str,
+    experiment_name: str,
+    models: List[str],
+    percentage: str,
+    operation: str,
+    iterations: List[int],
+    stretch_x: int = 1,
+    excluded: Optional[List[str]] = None,
+    input_index: int = 0,
+    **kwargs: Any,
+) -> None:
+    client = mlflow.tracking.MlflowClient(uri)
+    experiment = client.get_experiment_by_name(experiment_name)
+
+    runs = client.search_runs(
+        experiment.experiment_id, order_by=["attribute.start_time ASC"]
+    )
+
+    for iteration in iterations:
+        y_len, x_len = 1 + 2 * len(models), 1
+        fig, axes = plt.subplots(
+            y_len, x_len, figsize=(stretch_x * 6 * x_len, 6 * (1 + y_len))
+        )
+        fig.tight_layout(h_pad=10.0, w_pad=5.0)
+
+        for idx_m, model in enumerate(models):
+            model_class = BaseNetwork.select_(model)
+            if model_class is None:
+                continue
+
+            filtered = filter_runs(
+                runs,
+                {
+                    "model": model,
+                    "operation": operation,
+                    "percentage": percentage,
+                },
+            )
+            if len(filtered) == 0:
+                continue
+
+            run = filtered[iteration]
+            comments = ""
+            sub_axis_title = "Layers Outputs"
+            if "val_loss" in run.data.metrics:
+                comments = f"Loss: {run.data.metrics['val_loss']:.3e}"
+            if "mean_psnr" in run.data.metrics:
+                sub_axis_title += f"\nMean PSNR: {run.data.metrics['mean_psnr']:.3f}"
+
+            axis = axes[1 + 2 * idx_m]
+            sub_axis = axes[1 + 2 * idx_m + 1]
+            axis.set_ylabel(
+                model,
+                fontsize=300 / len(model),
+                rotation=0,
+                labelpad=100,
+                va="center",
+            )
+            sub_axis.set_ylabel(
+                sub_axis_title,
+                fontsize=300 / max(map(len, sub_axis_title.split('\n'))),
+                rotation=0,
+                labelpad=100,
+                va="center",
+            )
+
+            if idx_m == 0:
+                with open(get_metafile_path(run), "rb") as metafile:
+                    data = pickle.load(metafile)
+                    target = data["targets"][input_index, 0]
+                    input_ = data["inputs"][input_index, 0]
+
+                divider = make_axes_locatable(axes[0])
+                plot_image(
+                    axes[0],
+                    input_,
+                    percentage,
+                    divider=divider,
+                    comments=operation,
+                    target=target,
+                )
+
+            path = get_visfile_path(run)
+            pl_module = model_class.load_from_checkpoint(path)
+
+            divider = make_axes_locatable(axis)
+            sub_divider = make_axes_locatable(sub_axis)
+            plot_index = 0
+
+            modules = forward(pl_module, input_[None, None, :, :])
+
+            for (
+                _,
+                (class_name, plot_method, layer_outputs),
+            ) in modules.items():
+                if plot_method is None or (
+                    excluded is not None and class_name.lower() in excluded
+                ):
+                    continue
+
+                if plot_index > 0:
+                    axis = divider.append_axes(
+                        "right", size="100%", pad=0.3
+                    )
+                    sub_axis = sub_divider.append_axes(
+                        "right", size="100%", pad=0.3
+                    )
+                    comments = ""
+
+                try:
+                    plot_method(
+                        axis=axis,
+                        comments=comments,
+                        divider=divider,
+                    )
+                    plot_image(sub_axis, layer_outputs[0, 0], target=target, divider=sub_divider)
+                    plot_index += 1
+                except NotImplementedError:
+                    pass
 
     plt.show()
