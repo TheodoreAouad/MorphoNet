@@ -71,7 +71,8 @@ def psnr(
         target = (target - np.min(target)) / (np.max(target) - np.min(target))
 
     mse = np.mean((target - noised) ** 2, dtype=np.float64)
-    return 10 * np.log10((image_max ** 2) / mse)
+    return 10 * np.log10((image_max**2) / mse)
+
 
 def psnr_batch(
     noised: torch.Tensor,
@@ -94,9 +95,8 @@ def psnr_batch(
 
     mse = torch.sum((target - noised) ** 2, dim=1) / noised.shape[1]
 
-    return (
-        torch.mean(10 * torch.log10((image_max ** 2) / mse))
-    ).item()
+    return (torch.mean(10 * torch.log10((image_max**2) / mse))).item()
+
 
 def plot_grid(samples: np.ndarray) -> np.ndarray:
     """Plot grid image with given samples. Return the figure as an image."""

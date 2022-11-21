@@ -3,7 +3,7 @@
 import os
 import pickle
 from collections import OrderedDict
-from typing import Any, Dict, Iterator, List, Optional, Tuple
+from typing import Dict, Iterator, List, Optional, Tuple, Type
 
 import matplotlib.pyplot as plt
 import mlflow
@@ -57,33 +57,25 @@ def get_keys(path: str) -> None:
         print(out.keys())
 
 
-def plot_sel(
-    name: str, **kwargs: Any
-) -> None:  # pylint: disable=unused-argument
+def plot_sel(name: str, filter_size: int = 7) -> None:
     """Plot desired structuring element."""
-    raise Exception("Not implemented")
+    _, axis = plt.subplots(1, 1, figsize=(6, 6))
 
+    structuring_element = StructuringElement.select(
+        name, filter_size=filter_size, precision="f64"
+    )()
 
-def plot_selem_row(axes: Axes, structuring_elements: List[str]) -> Axes:
-    """Plot the first row with structuring elements aspects."""
-    base_path = "../tests/operations/structuring_elements/data/"
-    for idx_s, structuring_element in enumerate(structuring_elements):
-        path = f"{base_path}/{structuring_element}_7.npy"
+    axis.pcolormesh(structuring_element, cmap="plasma")
+    axis.set_box_aspect(1)
+    axis.invert_yaxis()
+    axis.axis("off")
+    axis.set_title(name, fontsize=20, y=-0.15)
 
-        axis = axes[0, idx_s]
-        axis.pcolormesh(np.load(path).squeeze(), cmap="plasma")
-        axis.set_box_aspect(1)
-        axis.invert_yaxis()
-        axis.axis("off")
-        axis.set_title(structuring_element, fontsize=20, y=-0.15)
-
-        divider = make_axes_locatable(axis)
-        clb_ax1 = divider.append_axes("right", size="40%", pad=0.05)
-        clb_ax2 = divider.append_axes("left", size="25%", pad=0.05)
-        clb_ax1.axis("off")
-        clb_ax2.axis("off")
-
-    return axes
+    divider = make_axes_locatable(axis)
+    clb_ax1 = divider.append_axes("right", size="40%", pad=0.05)
+    clb_ax2 = divider.append_axes("left", size="25%", pad=0.05)
+    clb_ax1.axis("off")
+    clb_ax2.axis("off")
 
 
 def recreate_target_selem(
@@ -112,7 +104,8 @@ def filter_runs(
         filtered = list(
             filter(
                 # pylint: disable=cell-var-from-loop
-                lambda run: run.data.params[key] == value, filtered
+                lambda run: run.data.params[key] == value,
+                filtered,
             )
         )
 
@@ -138,7 +131,11 @@ def forward(pl_module: pl.LightningModule, inputs: torch.Tensor) -> OrderedDict:
             else:
                 plot_method = None
 
-            modules[index] = (module__.__class__.__name__, plot_method, module_output)
+            modules[index] = (
+                module__.__class__.__name__,
+                plot_method,
+                module_output,
+            )
 
             index += 1
 
@@ -156,7 +153,32 @@ def forward(pl_module: pl.LightningModule, inputs: torch.Tensor) -> OrderedDict:
     return OrderedDict(sorted(modules.items()))
 
 
-def iterate_over_axes(
+def plot_selem_row_(
+    axes: Axes, structuring_elements: List[str], filter_size: int = 7
+) -> Axes:
+    """Plot the first row with structuring elements aspects."""
+    for idx_s, name in enumerate(structuring_elements):
+        structuring_element = StructuringElement.select(
+            name, filter_size=filter_size, precision="f64"
+        )()
+
+        axis = axes[0, idx_s]
+        axis.pcolormesh(structuring_element, cmap="plasma")
+        axis.set_box_aspect(1)
+        axis.invert_yaxis()
+        axis.axis("off")
+        axis.set_title(name, fontsize=20, y=-0.15)
+
+        divider = make_axes_locatable(axis)
+        clb_ax1 = divider.append_axes("right", size="40%", pad=0.05)
+        clb_ax2 = divider.append_axes("left", size="25%", pad=0.05)
+        clb_ax1.axis("off")
+        clb_ax2.axis("off")
+
+    return axes
+
+
+def iterate_over_axes_(
     models: List[str],
     operations: List[str],
     structuring_elements: List[str],
@@ -178,7 +200,52 @@ def iterate_over_axes(
                 yield idx_m, model, idx_o, operation, idx_s, structuring_element
 
 
-def ploting(  # pylint: disable=too-many-locals,too-many-arguments,unused-argument
+def plot_submodules_(
+    run: Run,
+    axis: Axes,
+    pl_module: pl.LightningModule,
+    inputs: torch.Tensor,
+    structuring_element: str,
+    excluded: Optional[List[str]],
+) -> None:
+    """Plot each modules of the network."""
+    target_structuring_element = recreate_target_selem(
+        run.data, structuring_element
+    )
+
+    divider = make_axes_locatable(axis)
+    plot_index = 0
+
+    comments = ""
+    if "val_loss" in run.data.metrics:
+        comments = f"Loss: {run.data.metrics['val_loss']:.3e}"
+
+    for (
+        _,
+        (class_name, plot_method, _),
+    ) in forward(pl_module, inputs[0][None, :, :, :]).items():
+        if plot_method is None or (
+            excluded is not None and class_name.lower() in excluded
+        ):
+            continue
+
+        if plot_index > 0:
+            axis = divider.append_axes("right", size="100%", pad=0.3)
+            comments = ""
+
+        try:
+            plot_method(
+                axis=axis,
+                target=target_structuring_element,
+                comments=comments,
+                divider=divider,
+            )
+            plot_index += 1
+        except NotImplementedError:
+            pass
+
+
+def plot(  # pylint: disable=too-many-locals,too-many-arguments,unused-argument
     uri: str,
     experiment_name: str,
     models: List[str],
@@ -187,7 +254,6 @@ def ploting(  # pylint: disable=too-many-locals,too-many-arguments,unused-argume
     iterations: List[int],
     stretch_x: int = 1,
     excluded: Optional[List[str]] = None,
-    **kwargs: Any,
 ) -> None:
     """
     Plot an entire figure with the results for desired models, structuring
@@ -209,7 +275,7 @@ def ploting(  # pylint: disable=too-many-locals,too-many-arguments,unused-argume
         if x_len == 1:
             axes = np.array([axes]).T
 
-        axes = plot_selem_row(axes, structuring_elements)
+        axes = plot_selem_row_(axes, structuring_elements)
 
         for (
             idx_m,
@@ -218,7 +284,7 @@ def ploting(  # pylint: disable=too-many-locals,too-many-arguments,unused-argume
             operation,
             idx_s,
             structuring_element,
-        ) in iterate_over_axes(models, operations, structuring_elements, axes):
+        ) in iterate_over_axes_(models, operations, structuring_elements, axes):
             filtered = filter_runs(
                 runs,
                 {
@@ -231,9 +297,6 @@ def ploting(  # pylint: disable=too-many-locals,too-many-arguments,unused-argume
                 continue
 
             run = filtered[iteration]
-            target_structuring_element = recreate_target_selem(
-                run.data, structuring_element
-            )
 
             model_class = BaseNetwork.select_(model)
             if model_class is None:
@@ -245,46 +308,21 @@ def ploting(  # pylint: disable=too-many-locals,too-many-arguments,unused-argume
             with open(get_metafile_path(run), "rb") as metafile:
                 inputs = pickle.load(metafile)["inputs"]
 
-                axis = axes[1 + idx_m * len(operations) + idx_o, idx_s]
-                divider = make_axes_locatable(axis)
-                plot_index = 0
+            axis = axes[1 + idx_m * len(operations) + idx_o, idx_s]
 
-                modules = forward(pl_module, inputs[0][None, :, :, :]).items()
-
-                comments = ""
-                if "val_loss" in run.data.metrics:
-                    comments = f"Loss: {run.data.metrics['val_loss']:.3e}"
-
-                for (
-                    _,
-                    (class_name, plot_method, _),
-                ) in modules:
-                    if plot_method is None or (
-                        excluded is not None and class_name.lower() in excluded
-                    ):
-                        continue
-
-                    if plot_index > 0:
-                        axis = divider.append_axes(
-                            "right", size="100%", pad=0.3
-                        )
-                        comments = ""
-
-                    try:
-                        plot_method(
-                            axis=axis,
-                            target=target_structuring_element,
-                            comments=comments,
-                            divider=divider,
-                        )
-                        plot_index += 1
-                    except NotImplementedError:
-                        pass
+            plot_submodules_(
+                run,
+                axis,
+                pl_module,
+                inputs,
+                structuring_element,
+                excluded,
+            )
 
         plt.show()
 
 
-def plot_image(
+def plot_image_(
     axis: Axes,
     image: torch.Tensor,
     percentage: Optional[str] = None,
@@ -298,12 +336,12 @@ def plot_image(
     axis.get_xaxis().set_ticks([])
     axis.set_box_aspect(1)
 
-    plot = axis.pcolormesh(image, cmap="plasma")
+    plot_ = axis.pcolormesh(image, cmap="plasma")
     if divider is None:
         divider = make_axes_locatable(axis)
     clb_ax = divider.append_axes("right", size="5%", pad=0.05)
     clb_ax.set_box_aspect(15)
-    plt.colorbar(plot, cax=clb_ax)
+    plt.colorbar(plot_, cax=clb_ax)
 
     if percentage is not None:
         axis.set_title(f"{percentage}%", fontsize=20)
@@ -317,15 +355,41 @@ def plot_image(
     return axis
 
 
-def ploting_noise_results(  # pylint: disable=too-many-locals,too-many-arguments,unused-argument
+def plot_noise_(
+    run: Run,
+    axes: Axes,
+    model_class: Type[BaseNetwork],
+    idx_m: int,
+    idx_p: int,
+    input_: torch.Tensor,
+    target: torch.Tensor,
+) -> None:
+    """Plot image prediction with noise related information."""
+    comments = ""
+    if "val_loss" in run.data.metrics:
+        comments += f"Loss: {run.data.metrics['val_loss']:.3e}"
+    if "mean_psnr" in run.data.metrics:
+        comments += f"\nMean PSNR: {run.data.metrics['mean_psnr']:.3f}"
+
+    path = get_visfile_path(run)
+    pl_module = model_class.load_from_checkpoint(path)
+
+    axis = axes[1 + idx_m, idx_p]
+    divider = make_axes_locatable(axis)
+
+    result = pl_module.predict_step(input_[None, None, :, :], -1).detach()
+    plot_image_(
+        axis, result[0, 0], target=target, divider=divider, comments=comments
+    )
+
+
+def plot_noise(  # pylint: disable=too-many-locals,too-many-arguments,unused-argument
     uri: str,
     experiment_name: str,
     models: List[str],
     percentages: List[str],
     operation: str,
     iterations: List[int],
-    stretch_x: int = 1,
-    **kwargs: Any,
 ) -> None:
     """
     Plot an entire figure with the results for desired models, percentage of
@@ -341,7 +405,7 @@ def ploting_noise_results(  # pylint: disable=too-many-locals,too-many-arguments
     for iteration in iterations:
         y_len, x_len = len(models), len(percentages)
         fig, axes = plt.subplots(
-            1 + y_len, x_len, figsize=(stretch_x * 6 * x_len, 6 * (1 + y_len))
+            1 + y_len, x_len, figsize=(6 * x_len, 6 * (1 + y_len))
         )
         fig.tight_layout(h_pad=10.0, w_pad=5.0)
         if x_len == 1:
@@ -365,17 +429,11 @@ def ploting_noise_results(  # pylint: disable=too-many-locals,too-many-arguments
                     continue
 
                 run = filtered[iteration]
-                comments = ""
-                if "val_loss" in run.data.metrics:
-                    comments = f"Loss: {run.data.metrics['val_loss']:.3e}"
-                if "mean_psnr" in run.data.metrics:
-                    comments += f"\nMean PSNR: {run.data.metrics['mean_psnr']:.3f}"
-
-
-                with open(get_metafile_path(run), "rb") as metafile:
-                    data = pickle.load(metafile)
-                    target = data["targets"][0, 0]
-                    input_ = data["inputs"][0, 0]
+                if idx_m == 0:
+                    with open(get_metafile_path(run), "rb") as metafile:
+                        data = pickle.load(metafile)
+                        target = data["targets"][0, 0]
+                        input_ = data["inputs"][0, 0]
 
                 if idx_p == 0:
                     axes[1 + idx_m, 0].set_ylabel(
@@ -387,31 +445,75 @@ def ploting_noise_results(  # pylint: disable=too-many-locals,too-many-arguments
                     )
 
                 if idx_m == 0:
-                    divider = make_axes_locatable(axes[0, idx_p])
-                    plot_image(
+                    # divider = make_axes_locatable(axes[0, idx_p])
+                    plot_image_(
                         axes[0, idx_p],
                         input_,
                         percentage,
-                        divider=divider,
+                        # divider=divider,
                         comments=operation,
                         target=target,
                     )
 
-                path = get_visfile_path(run)
-                pl_module = model_class.load_from_checkpoint(path)
-
-                axis = axes[1 + idx_m, idx_p]
-                divider = make_axes_locatable(axis)
-
-                result = pl_module.predict_step(
-                    input_[None, None, :, :], -1
-                ).detach()
-                plot_image(axis, result[0, 0], target=target, divider=divider, comments=comments)
+                plot_noise_(
+                    run, axes, model_class, idx_m, idx_p, input_, target
+                )
 
     plt.show()
 
 
-def ploting_noise_filters(  # pylint: disable=too-many-locals,too-many-arguments,unused-argument
+def plot_noise_results_(  # pylint: disable=too-many-locals
+    run: Run,
+    axis: Axes,
+    sub_axis: Axes,
+    model_class: Type[BaseNetwork],
+    input_: torch.Tensor,
+    target: torch.Tensor,
+    excluded: Optional[List[str]],
+) -> None:
+    """Plot filters and outputs."""
+    comments = ""
+    if "val_loss" in run.data.metrics:
+        comments = f"Loss: {run.data.metrics['val_loss']:.3e}"
+
+    path = get_visfile_path(run)
+    pl_module = model_class.load_from_checkpoint(path)
+
+    divider = make_axes_locatable(axis)
+    sub_divider = make_axes_locatable(sub_axis)
+    plot_index = 0
+
+    modules = forward(pl_module, input_[None, None, :, :])
+
+    for (_, (class_name, plot_method, layer_outputs)) in modules.items():
+        if plot_method is None or (
+            excluded is not None and class_name.lower() in excluded
+        ):
+            continue
+
+        if plot_index > 0:
+            axis = divider.append_axes("right", size="100%", pad=0.3)
+            sub_axis = sub_divider.append_axes("right", size="100%", pad=0.3)
+            comments = ""
+
+        try:
+            plot_method(
+                axis=axis,
+                comments=comments,
+                divider=divider,
+            )
+            plot_image_(
+                sub_axis,
+                layer_outputs[0, 0],
+                target=target,
+                divider=sub_divider,
+            )
+            plot_index += 1
+        except NotImplementedError:
+            pass
+
+
+def plot_noise_results(  # pylint: disable=too-many-locals,too-many-arguments,unused-argument
     uri: str,
     experiment_name: str,
     models: List[str],
@@ -421,8 +523,10 @@ def ploting_noise_filters(  # pylint: disable=too-many-locals,too-many-arguments
     stretch_x: int = 1,
     excluded: Optional[List[str]] = None,
     input_index: int = 0,
-    **kwargs: Any,
 ) -> None:
+    """
+    Plot filters for the desired denoising network with outputs of each layer.
+    """
     client = mlflow.tracking.MlflowClient(uri)
     experiment = client.get_experiment_by_name(experiment_name)
 
@@ -454,12 +558,6 @@ def ploting_noise_filters(  # pylint: disable=too-many-locals,too-many-arguments
                 continue
 
             run = filtered[iteration]
-            comments = ""
-            sub_axis_title = "Layers Outputs"
-            if "val_loss" in run.data.metrics:
-                comments = f"Loss: {run.data.metrics['val_loss']:.3e}"
-            if "mean_psnr" in run.data.metrics:
-                sub_axis_title += f"\nMean PSNR: {run.data.metrics['mean_psnr']:.3f}"
 
             axis = axes[1 + 2 * idx_m]
             sub_axis = axes[1 + 2 * idx_m + 1]
@@ -470,9 +568,15 @@ def ploting_noise_filters(  # pylint: disable=too-many-locals,too-many-arguments
                 labelpad=100,
                 va="center",
             )
+
+            sub_axis_title = "Layers Outputs"
+            if "mean_psnr" in run.data.metrics:
+                sub_axis_title += (
+                    f"\nMean PSNR: {run.data.metrics['mean_psnr']:.3f}"
+                )
             sub_axis.set_ylabel(
                 sub_axis_title,
-                fontsize=300 / max(map(len, sub_axis_title.split('\n'))),
+                fontsize=200 / max(map(len, sub_axis_title.split("\n"))),
                 rotation=0,
                 labelpad=100,
                 va="center",
@@ -485,7 +589,7 @@ def ploting_noise_filters(  # pylint: disable=too-many-locals,too-many-arguments
                     input_ = data["inputs"][input_index, 0]
 
                 divider = make_axes_locatable(axes[0])
-                plot_image(
+                plot_image_(
                     axes[0],
                     input_,
                     percentage,
@@ -494,42 +598,8 @@ def ploting_noise_filters(  # pylint: disable=too-many-locals,too-many-arguments
                     target=target,
                 )
 
-            path = get_visfile_path(run)
-            pl_module = model_class.load_from_checkpoint(path)
-
-            divider = make_axes_locatable(axis)
-            sub_divider = make_axes_locatable(sub_axis)
-            plot_index = 0
-
-            modules = forward(pl_module, input_[None, None, :, :])
-
-            for (
-                _,
-                (class_name, plot_method, layer_outputs),
-            ) in modules.items():
-                if plot_method is None or (
-                    excluded is not None and class_name.lower() in excluded
-                ):
-                    continue
-
-                if plot_index > 0:
-                    axis = divider.append_axes(
-                        "right", size="100%", pad=0.3
-                    )
-                    sub_axis = sub_divider.append_axes(
-                        "right", size="100%", pad=0.3
-                    )
-                    comments = ""
-
-                try:
-                    plot_method(
-                        axis=axis,
-                        comments=comments,
-                        divider=divider,
-                    )
-                    plot_image(sub_axis, layer_outputs[0, 0], target=target, divider=sub_divider)
-                    plot_index += 1
-                except NotImplementedError:
-                    pass
+            plot_noise_results_(
+                run, axis, sub_axis, model_class, input_, target, excluded
+            )
 
     plt.show()

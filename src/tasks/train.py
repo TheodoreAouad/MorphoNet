@@ -120,7 +120,9 @@ def init_callbacks(
         mode="min",  # TODO change for classif
     )
     tb_logger = TensorBoardLogger(
-        f"{os.getcwd()}/lightning_logs/", name=args.experiment, default_hp_metric=False,
+        f"{os.getcwd()}/lightning_logs/",
+        name=args.experiment,
+        default_hp_metric=False,
     )
     progress_bar = TQDMProgressBar(refresh_rate=100)
 

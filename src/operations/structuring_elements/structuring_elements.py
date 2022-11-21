@@ -14,8 +14,6 @@ from .base import (
 
 rng = np.random.default_rng()
 
-# TODO test draws
-
 
 class Disk2(Disk):
     """Construct a disk with radius 2."""
