@@ -14,7 +14,8 @@ I use [Black](https://black.readthedocs.io/en/stable/), [Mypy](https://mypy.read
 
 ## Example
 
-A similar script example can be found in the `run.sh` file.
+A similar script example can be found in the `scripts/run.sh` file.
+Other scripts are also in the same folder, examples of how I launch the benchmarks.
 
 ```bash
 $ python -m tasks.train\
