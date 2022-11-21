@@ -1,0 +1,93 @@
+[project]
+name = "Morphonet"
+version = "0.0.1"
+authors = [
+  { name="Hermary Romain", email="romain.hermary@lrde.epita.fr" },
+]
+description = "Implementation of morphological neural networks"
+readme = "README.md"
+requires-python = ">=3.7"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+[tool.pylint.master]
+init-hook = 'import os, sys; sys.path.append("./src")'
+ignore = [
+  "__pycache__",
+  "env",
+]
+
+[tool.pylint.messages_control]
+disable = [
+    "too-many-ancestors",
+    "fixme",
+    "duplicate-code",
+    "line-too-long",
+    "too-many-arguments",
+]
+
+[tool.pylint.typecheck]
+generated-members = "numpy.*, torch.*"
+
+[tool.black]
+line-length = 80
+
+[tool.mypy]
+disallow_untyped_defs = true
+exclude = [
+  "__pycache__",
+  "env",
+  "tests",
+]
+mypy_path = "./src/"
+namespace_packages = true
+explicit_package_bases = true
+
+[[tool.mypy.overrides]]
+module = [
+    "mlflow",
+    "mlflow.pytorch",
+    "mlflow.entities",
+    "skimage",
+    "scipy",
+    "scipy.ndimage",
+    "torchvision",
+    "matplotlib",
+    "matplotlib.axes._axes",
+    "matplotlib.figure",
+    "matplotlib.pyplot",
+    "mpl_toolkits.axes_grid1",
+    "mpl_toolkits.axes_grid1.axes_divider",
+]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+addopts = [
+    "--import-mode=importlib",
+]
+pythonpath = [
+  "src",
+]
+filterwarnings = [
+  "ignore::DeprecationWarning"
+]
+
+[tool.coverage.run]
+source = [
+  "src",
+]
+omit = [
+  "*/__init__.py",
+  "src/misc/parser.py",
+  "src/misc/context.py",
+  "src/misc/visualizer.py",
+  "src/tasks/train.py",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+  "pragma: no cover"
+]
