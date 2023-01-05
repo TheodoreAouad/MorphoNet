@@ -4,6 +4,7 @@ from scipy import ndimage
 import numpy as np
 
 from .base import MorphologicalOperation, BinaryMorphologicalOperation
+from .array_morphology import array_dilation, array_erosion
 
 # TODO pad mode must be explicitely the same as for model inputs
 
@@ -75,7 +76,6 @@ class BErosion(BinaryMorphologicalOperation):
     ) -> np.ndarray:
         return ndimage.binary_erosion(image, structure=structuring_element)
 
-
 class BOpening(BDilation, BErosion):
     """Do a binary opening on the image."""
 
@@ -95,4 +95,42 @@ class BClosing(BDilation, BErosion):
     ) -> np.ndarray:
         dilated = BDilation._func(self, image, structuring_element)
         eroded = BErosion._func(self, dilated, structuring_element)
+        return eroded
+
+
+class BDilationArray(BinaryMorphologicalOperation):
+    """Do a binary dilation on the image, borders are mirrored."""
+    def _func(
+        self, image: np.ndarray, structuring_element: np.ndarray
+    ) -> np.ndarray:
+        return array_dilation(image, selem=structuring_element)
+
+
+class BErosionArray(BinaryMorphologicalOperation):
+    """Do a binary erosion on the image, borders are mirrored."""
+    def _func(
+        self, image: np.ndarray, structuring_element: np.ndarray
+    ) -> np.ndarray:
+        return array_erosion(image, selem=structuring_element)
+
+
+class BOpeningArray(BDilationArray, BErosionArray):
+    """Do a binary opening on the image."""
+
+    def _func(
+        self, image: np.ndarray, structuring_element: np.ndarray
+    ) -> np.ndarray:
+        eroded = BErosionArray._func(self, image, structuring_element)
+        dilated = BDilationArray._func(self, eroded, structuring_element)
+        return dilated
+
+
+class BClosingArray(BDilationArray, BErosionArray):
+    """Do a binary closing on the image."""
+
+    def _func(
+        self, image: np.ndarray, structuring_element: np.ndarray
+    ) -> np.ndarray:
+        dilated = BDilationArray._func(self, image, structuring_element)
+        eroded = BErosionArray._func(self, dilated, structuring_element)
         return eroded

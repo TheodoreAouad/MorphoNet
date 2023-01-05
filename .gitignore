@@ -16,3 +16,4 @@ mlruns
 lightning_logs
 todo/
 *coverage*
+venv

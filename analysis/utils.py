@@ -218,7 +218,7 @@ def plot_submodules_(
 
     comments = ""
     if "val_loss" in run.data.metrics:
-        comments = f"Loss: {run.data.metrics['val_loss']:.3e}"
+        comments = f"Loss: {run.data.   ['val_loss']:.3e}"
 
     for (
         _,
@@ -370,6 +370,8 @@ def plot_noise_(
         comments += f"Loss: {run.data.metrics['val_loss']:.3e}"
     if "mean_psnr" in run.data.metrics:
         comments += f"\nMean PSNR: {run.data.metrics['mean_psnr']:.3f}"
+    if "mean_dice" in run.data.metrics:
+        comments += f"\nMean DICE: {run.data.metrics['mean_dice']:.3f}"
 
     path = get_visfile_path(run)
     pl_module = model_class.load_from_checkpoint(path)

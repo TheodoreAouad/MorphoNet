@@ -105,7 +105,7 @@ class Parser(argparse.ArgumentParser):
                 dataset_name, help=f"Train on {class_.__name__}"
             )
             dataset_parser.add_argument(
-                "dataset_path", help="dataset to train on"
+                "dataset_path", help="dataset to train on",
             )
 
         sidd_parser = subparsers.add_parser("sidd", help="Train on sidd")

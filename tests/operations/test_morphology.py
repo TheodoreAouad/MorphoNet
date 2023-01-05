@@ -1,4 +1,4 @@
-from operations.morphology import (
+from src.operations.morphology import (
     Dilation,
     Erosion,
     Opening,
@@ -9,7 +9,7 @@ from operations.morphology import (
     BClosing,
     BOpening,
 )
-from operations.structuring_elements import Complex, BDiamond
+from src.operations.structuring_elements import Complex, BDiamond
 from pytest import fixture
 from pathlib import Path
 import numpy as np
